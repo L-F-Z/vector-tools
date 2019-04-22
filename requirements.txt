@@ -1,0 +1,10 @@
+vector
+numpy
+opencv-python
+opencv-contrib-python
+termcolor
+PyOpenGL
+PyOpenGL_accelerate
+pyreadline
+SpeechRecognition
+PyAudio

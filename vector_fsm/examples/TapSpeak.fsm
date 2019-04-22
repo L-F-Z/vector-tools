@@ -1,0 +1,37 @@
+"""
+  The TapSpeak demo shows Vector responding to cube tap events. A
+  TapTrans transition is used to set up a handler for taps. The
+  example also illustrates how the TapTrans transition does wildcard
+  matching if not given an argument. By passing a cube as an argument
+  to the TapTrans constructor can use it to look for taps on a
+  specific cube.
+
+  Behavior: Vector starts out by saying 'Tap a cube'. Then, every time
+  a cube is tapped, Vector says the cube name and goes back to
+  listening for more tap events.
+"""
+
+try:
+    from vector_fsm import *
+except:
+    raise ImportError("Can't find the vector_fsm package. Check your search path.")
+
+from vector_fsm import *
+
+class SayCube(Say):
+    """Say the name of a cube."""
+    def start(self, event=None, \
+              cube_names = ['paperclip', 'anglepoise lamp', 'deli slicer']):
+        cube_number = next(k for k,v in self.robot.world.light_cubes.items() \
+                               if v == event.source)
+        self.text = cube_names[cube_number-1]
+        super().start(event)
+
+class TapSpeak(StateMachineProgram):
+    $setup {
+        intro: Say('Tap a cube.') =C=> wait
+
+        wait: StateNode() =Tap()=> speak
+
+        speak: SayCube() =C=> wait
+    }
