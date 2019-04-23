@@ -326,21 +326,21 @@ class ParticleViewer():
                                            should_play_anim=False)
         await handle.wait_for_completed()
         pf = self.robot.world.particle_filter
-        self.robot.loop.call_later(0.1, pf.look_for_new_landmarks)
+        self.robot.conn.loop.call_later(0.1, pf.look_for_new_landmarks)
         self.report_pose()
 
     async def turn(self,angle):
         handle = self.robot.turn_in_place(degrees(angle), in_parallel=True)
         await handle.wait_for_completed()
         pf = self.robot.world.particle_filter
-        self.robot.loop.call_later(0.1, pf.look_for_new_landmarks)
+        self.robot.conn.loop.call_later(0.1, pf.look_for_new_landmarks)
         self.report_pose()
 
     async def look(self,angle):
         handle = self.robot.set_head_angle(degrees(angle), in_parallel=True)
         await handle.wait_for_completed()
         pf = self.robot.world.particle_filter
-        self.robot.loop.call_later(0.1, pf.look_for_new_landmarks)
+        self.robot.conn.loop.call_later(0.1, pf.look_for_new_landmarks)
         self.report_pose()
 
     def keyPressed(self,key,mouseX,mouseY):
@@ -358,27 +358,27 @@ class ParticleViewer():
             pf.update_weights()
             pf.resample()
         elif key == b'w':     # forward
-            self.robot.loop.create_task(self.forward(translate_wasd))
+            self.robot.conn.loop.create_task(self.forward(translate_wasd))
         elif key == b'W':     # forward
-            self.robot.loop.create_task(self.forward(translate_WASD))
+            self.robot.conn.loop.create_task(self.forward(translate_WASD))
         elif key == b's':     # back
-            self.robot.loop.create_task(self.forward(-translate_wasd))
+            self.robot.conn.loop.create_task(self.forward(-translate_wasd))
         elif key == b'S':     # back
-            self.robot.loop.create_task(self.forward(-translate_WASD))
+            self.robot.conn.loop.create_task(self.forward(-translate_WASD))
         elif key == b'a':     # left
-            self.robot.loop.create_task(self.turn(rotate_wasd))
+            self.robot.conn.loop.create_task(self.turn(rotate_wasd))
         elif key == b'A':     # left
-            self.robot.loop.create_task(self.turn(rotate_WASD))
+            self.robot.conn.loop.create_task(self.turn(rotate_WASD))
         elif key == b'd':     # right
-            self.robot.loop.create_task(self.turn(-rotate_wasd))
+            self.robot.conn.loop.create_task(self.turn(-rotate_wasd))
         elif key == b'D':     # right
-            self.robot.loop.create_task(self.turn(-rotate_WASD))
+            self.robot.conn.loop.create_task(self.turn(-rotate_WASD))
         elif key == b'i':     # head up
             ang = self.robot.head_angle.degrees + 5
-            self.robot.loop.create_task(self.look(ang))
+            self.robot.conn.loop.create_task(self.look(ang))
         elif key == b'k':     # head down
             ang = self.robot.head_angle.degrees - 5
-            self.robot.loop.create_task(self.look(ang))
+            self.robot.conn.loop.create_task(self.look(ang))
         elif key == b'z':     # delocalize
             pf.delocalize()
             #pf.initializer.initialize(self.robot)

@@ -61,6 +61,13 @@ def setup():
     RUNNING = True
 
 
+def simple_cli_callback(_wcube1, _wcharger):
+    global wcube1, wcharger
+    wcube1 = _wcube1
+    wcharger = _wcharger
+
+
+
 def do_shell_command(cmd):
     try:
         subprocess.call(cmd, shell=True)
@@ -118,7 +125,7 @@ def show_stuff(args):
         running_fsm.set_name("CamViewer")
         running_fsm.simple_cli_callback = simple_cli_callback
         vector_fsm.program.running_fsm = running_fsm
-        robot.loop.call_soon(running_fsm.start)
+        robot.conn.loop.call_soon(running_fsm.start)
     elif spec == "crosshairs":
         if running_fsm:
             running_fsm.viewer_crosshairs = not running_fsm.viewer_crosshairs
@@ -140,7 +147,7 @@ def show_stuff(args):
         running_fsm.set_name("CamViewer")
         running_fsm.simple_cli_callback = simple_cli_callback
         vector_fsm.program.running_fsm = running_fsm
-        robot.loop.call_soon(running_fsm.start)
+        robot.conn.loop.call_soon(running_fsm.start)
         robot.world.particle_viewer = ParticleViewer(robot)
         robot.world.particle_viewer.start()
         robot.world.path_viewer = PathViewer(robot,world.rrt)
@@ -482,6 +489,12 @@ def cli_loop(robot):
 def main():
     args = anki_vector.util.parse_command_args()
     with anki_vector.Robot(args.serial) as robot:
+        try:
+            robot.erouter = vector_fsm.evbase.EventRouter()
+            robot.erouter.robot = robot
+            vector_fsm.evbase.robot_for_loading = robot
+        except:
+            pass
         cli_loop(robot)
 
 

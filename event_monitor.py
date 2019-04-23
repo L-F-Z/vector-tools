@@ -31,8 +31,10 @@ ChangeLog
 """
 
 import re
+from collections import defaultdict
 
 import anki_vector
+from anki_vector.events import Events
 
 
 def print_prefix(evt):
@@ -61,8 +63,8 @@ def monitor_generic(evt, **kwargs):
         action = kwargs['action']
         if isinstance(action, anki_vector.anim.Animation):
             print(action.anim_name, '', end='')
-        elif isinstance(action, anki_vector.anim.AnimationTrigger):
-            print(action.trigger.name, '', end='')
+        # elif isinstance(action, anki_vector.anim.AnimationTrigger):
+        #     print(action.trigger.name, '', end='')
     print(set(kwargs.keys()))
 
 
@@ -71,8 +73,8 @@ def monitor_EvtActionCompleted(evt, action, state, failure_code, failure_reason,
     print_object(action)
     if isinstance(action, anki_vector.anim.Animation):
         print('', action.anim_name, end='')
-    elif isinstance(action, anki_vector.anim.AnimationTrigger):
-        print('', action.trigger.name, end='')
+    # elif isinstance(action, anki_vector.anim.AnimationTrigger):
+    #     print('', action.trigger.name, end='')
     print('',state,end='')
     if failure_code is not None:
         print('',failure_code,failure_reason,end='')
@@ -105,27 +107,36 @@ def monitor_face(evt, face, **kwargs):
     kw = set(kwargs.keys()) if len(kwargs) > 0 else '{}'
     print(name, ' (%s) ' % expr, ' face_id=', face.face_id, '  ', kw, sep='')
 
-dispatch_table = {
-  anki_vector.action.EvtActionStarted        : monitor_generic,
-  anki_vector.action.EvtActionCompleted      : monitor_EvtActionCompleted,
-  anki_vector.behavior.EvtBehaviorStarted    : monitor_generic,
-  anki_vector.behavior.EvtBehaviorStopped    : monitor_generic,
-  anki_vector.anim.EvtAnimationsLoaded       : monitor_generic,
-  anki_vector.anim.EvtAnimationCompleted     : monitor_EvtActionCompleted,
-  anki_vector.objects.EvtObjectAppeared      : monitor_generic,
-  anki_vector.objects.EvtObjectDisappeared   : monitor_generic,
-  anki_vector.objects.EvtObjectMovingStarted : monitor_EvtObjectMovingStarted,
-  anki_vector.objects.EvtObjectMovingStopped : monitor_EvtObjectMovingStopped,
-  anki_vector.objects.EvtObjectObserved      : monitor_generic,
-  anki_vector.objects.EvtObjectTapped        : monitor_EvtObjectTapped,
-  anki_vector.faces.EvtFaceAppeared          : monitor_face,
-  anki_vector.faces.EvtFaceObserved          : monitor_face,
-  anki_vector.faces.EvtFaceDisappeared       : monitor_face,
-}
+dispatch_table = defaultdict(lambda: monitor_generic)
+dispatch_table[Events.object_tapped] = monitor_EvtObjectTapped
+dispatch_table[Events.object_moved] = monitor_EvtObjectMovingStarted
+dispatch_table[Events.object_stopped_moving] = monitor_EvtObjectMovingStopped
+
+
+##################################################################################
+# dispatch_table = {                                                             #
+#     Events.                                                                    #
+#   anki_vector.action.EvtActionStarted        : monitor_generic,                #
+#   anki_vector.action.EvtActionCompleted      : monitor_EvtActionCompleted,     #
+#   anki_vector.behavior.EvtBehaviorStarted    : monitor_generic,                #
+#   anki_vector.behavior.EvtBehaviorStopped    : monitor_generic,                #
+#   anki_vector.anim.EvtAnimationsLoaded       : monitor_generic,                #
+#   anki_vector.anim.EvtAnimationCompleted     : monitor_EvtActionCompleted,     #
+#   anki_vector.objects.EvtObjectAppeared      : monitor_generic,                #
+#   anki_vector.objects.EvtObjectDisappeared   : monitor_generic,                #
+#   anki_vector.objects.EvtObjectMovingStarted : monitor_EvtObjectMovingStarted, #
+#   anki_vector.objects.EvtObjectMovingStopped : monitor_EvtObjectMovingStopped, #
+#   anki_vector.objects.EvtObjectObserved      : monitor_generic,                #
+#   anki_vector.objects.EvtObjectTapped        : monitor_EvtObjectTapped,        #
+#   anki_vector.faces.EvtFaceAppeared          : monitor_face,                   #
+#   anki_vector.faces.EvtFaceObserved          : monitor_face,                   #
+#   anki_vector.faces.EvtFaceDisappeared       : monitor_face,                   #
+# }                                                                              #
+##################################################################################
 
 excluded_events = {    # Occur too frequently to monitor by default
-    anki_vector.objects.EvtObjectObserved,
-    anki_vector.faces.EvtFaceObserved,
+    Events.robot_observed_object,
+    Events.robot_observed_face
 }
 
 

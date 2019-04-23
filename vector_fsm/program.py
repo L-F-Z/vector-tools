@@ -71,10 +71,10 @@ class StateMachineProgram(StateNode):
             self.robot.erouter.robot = self.robot
 
         # Reset custom objects
-        cor = self.robot.world.undefine_all_custom_marker_objects()
+        cor = self.robot.world.delete_custom_objects()
         if inspect.iscoroutine(cor):
             asyncio.ensure_future(cor)
-        self.robot.loop.create_task(custom_objs.declare_objects(self.robot))
+        self.robot.conn.loop.create_task(custom_objs.declare_objects(self.robot))
         time.sleep(0.25)  # need time for custom objects to be transmitted
         
         self.kine_class = kine_class
@@ -134,24 +134,20 @@ class StateMachineProgram(StateNode):
         self.robot.fetching = None
 
         # World map and path planner
-        self.robot.enable_facial_expression_estimation(True)
+        self.robot.vision.enable_face_detection(detect_faces=True)
         self.robot.world.world_map = \
                 self.world_map or WorldMap(self.robot)
         self.robot.world.rrt = self.rrt or RRT(self.robot)
 
         if self.simple_cli_callback:
             # Make worldmap cubes and charger accessible to simple_cli
-            cubes = self.robot.world.light_cubes
-            wc1 = wc2 = wc3 = wcharger = None
-            if 1 in cubes:
-                wc1 = self.robot.world.world_map.update_cube(cubes[1])
-            if 2 in cubes:
-                wc2 = self.robot.world.world_map.update_cube(cubes[2])
-            if 3 in cubes:
-                wc3 = self.robot.world.world_map.update_cube(cubes[3])
+            cube = self.robot.world.light_cube
+            wc1 = wcharger = None
+            if cube is not None:
+                wc1 = self.robot.world.world_map.update_cube(cube)
             if self.robot.world.charger is not None:
                 wcharger = self.robot.world.world_map.update_charger()
-            self.simple_cli_callback(wc1, wc2, wc3, wcharger)
+            self.simple_cli_callback(wc1, wcharger)
 
         # Polling
         self.set_polling_interval(0.025)  # for kine and motion model update
@@ -200,9 +196,8 @@ class StateMachineProgram(StateNode):
             self.robot.world.world_map.handle_object_observed)
 
         # Set up cube motion detection
-        cubes = self.robot.world.light_cubes
-        for i in cubes:
-            cubes[i].movement_start_time = None
+        cube = self.robot.world.light_cube
+        cube.movement_start_time = None
 
         self.robot.world.add_event_handler(
             vector.objects.EvtObjectMovingStarted,
@@ -254,24 +249,20 @@ class StateMachineProgram(StateNode):
         # Invalidate cube pose if cube has been moving and isn't seen
         move_duration_regular_threshold = 0.5 # seconds
         move_duration_fetch_threshold = 1 # seconds
-        cubes = self.robot.world.light_cubes
+        cube = self.robot.world.light_cube
         now = None
-        for i in cubes:
-            cube = cubes[i]
-            if self.robot.carrying and self.robot.carrying.sdk_obj is cube:
-                continue
-            if cube.movement_start_time is not None and not cube.is_visible:
-                now = now or time.time()
-                if self.robot.fetching and self.robot.fetching.sdk_obj is cube:
-                    threshold = move_duration_fetch_threshold
-                else:
-                    threshold = move_duration_regular_threshold
-                if (now - cube.movement_start_time) > threshold:
-                    cube_id = 'Cube-' + str(cube.cube_id)
-                    wcube = self.robot.world.world_map.objects[cube_id]
-                    wcube.pose_confidence = -1
-                    cube.movement_start_time = None
-                    print('Invalidating pose of', wcube)
+        if not self.robot.carrying or not self.robot.carrying.sdk_obj is cube and (cube.movement_start_time is not None and not cube.is_visible):
+            now = now or time.time()
+            if self.robot.fetching and self.robot.fetching.sdk_obj is cube:
+                threshold = move_duration_fetch_threshold
+            else:
+                threshold = move_duration_regular_threshold
+            if (now - cube.movement_start_time) > threshold:
+                cube_id = 'Cube-' + str(cube.cube_id)
+                wcube = self.robot.world.world_map.objects[cube_id]
+                wcube.pose_confidence = -1
+                cube.movement_start_time = None
+                print('Invalidating pose of', wcube)
                     
         # Update robot kinematic description
         self.robot.kine.get_pose()

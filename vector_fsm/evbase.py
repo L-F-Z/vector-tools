@@ -136,7 +136,7 @@ class EventRouter:
             cnt += 1
             if TRACE.trace_level >= TRACE.listener_invocation:
                 print('TRACE%d:' % TRACE.listener_invocation, listener.__class__, 'receiving', event)
-            self.robot.loop.call_soon(listener,event)
+            self.robot.conn.loop.call_soon(listener,event)
     
 #________________ Event Listener ________________
 
@@ -164,7 +164,7 @@ class EventListener:
         self.running = True
         if self.polling_interval:
             self.poll_handle = \
-                self.robot.loop.call_later(self.polling_interval, self._next_poll)
+                self.robot.conn.loop.call_later(self.polling_interval, self._next_poll)
 
     def stop(self):
         if not self.running: return
@@ -185,7 +185,7 @@ class EventListener:
         """Called to poll the node and then schedule the next polling interval."""
         if self.running and self.polling_interval:
             self.poll_handle = \
-                self.robot.loop.call_later(self.polling_interval, self._next_poll)
+                self.robot.conn.loop.call_later(self.polling_interval, self._next_poll)
         # schedule the next poll first because self.poll may cancel it
         self.poll()
 

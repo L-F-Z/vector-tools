@@ -1,6 +1,7 @@
 from math import pi
 
 import anki_vector
+from anki_vector.util import Angle
 
 from .kine import *
 from vector_fsm import transform
@@ -14,8 +15,11 @@ center_of_rotation_offset = -19.7 # millimeters
 
 # ================================================================
 
-class vectorKinematics(Kinematics):
+class VectorKinematics(Kinematics):
     def __init__(self,robot):
+        anki_vector.behavior.MAX_LIFT_ANGLE=Angle(radians=0.79)
+        anki_vector.behavior.MIN_LIFT_ANGLE=Angle(radians=-0.2)
+
         base_frame = Joint('base',
                            description='Base frame: the root of the kinematic tree')
 
@@ -42,16 +46,16 @@ class vectorKinematics(Kinematics):
         shoulder_frame = Joint('shoulder', parent=base_frame,
                                type='revolute', getter=self.get_shoulder,
                                description='Rotation axis of the lift; z points to the right',
-                               qmin=vector.robot.MIN_LIFT_ANGLE.radians,
-                               qmax=vector.robot.MAX_LIFT_ANGLE.radians,
+                               qmin=anki_vector.behavior.MIN_LIFT_ANGLE.radians,
+                               qmax=anki_vector.behavior.MAX_LIFT_ANGLE.radians,
                                d=21., r=-39., alpha=pi/2)
 
         lift_attach_frame = \
             Joint('lift_attach', parent=shoulder_frame, type='revolute',
                   description='Tip of the lift, where cubes attach; distal end of four-bar linkage',
                   getter=self.get_lift_attach, r=66.,
-                  qmax = - vector.robot.MIN_LIFT_ANGLE.radians,
-                  qmin = - vector.robot.MAX_LIFT_ANGLE.radians,
+                  qmax = - anki_vector.behavior.MIN_LIFT_ANGLE.radians,
+                  qmin = - anki_vector.behavior.MAX_LIFT_ANGLE.radians,
                   collision_model=Circle(transform.point(), radius=10))
 
         # Positive head angle is up, so z must point to the right.
@@ -59,8 +63,8 @@ class vectorKinematics(Kinematics):
         head_frame = Joint('head', parent=base_frame, type='revolute',
                            getter=self.get_head,
                            description='Axis of head rotation; z points to the right',
-                           qmin=vector.robot.MIN_HEAD_ANGLE.radians,
-                           qmax=vector.robot.MAX_HEAD_ANGLE.radians,
+                           qmin=anki_vector.behavior.MIN_HEAD_ANGLE.radians,
+                           qmax=anki_vector.behavior.MAX_HEAD_ANGLE.radians,
                            d=35., r=-10., alpha=pi/2)
 
         # Dummy joint located below head joint at level of the camera frame,
@@ -81,12 +85,12 @@ class vectorKinematics(Kinematics):
         super().__init__(joints,robot)
 
     def get_head(self):
-        return self.robot.head_angle.radians
+        return self.robot.head_angle_rad
 
     def get_shoulder(self):
         # Formula supplied by Mark Wesley at Anki
         # Check SDK documentation for new lift-related calls that might replace this
-        return math.asin( (self.robot.lift_height.distance_mm-45.0) / 66.0)
+        return math.asin( (self.robot.lift_height_mm-45.0) / 66.0)
 
     def get_lift_attach(self):
         return -self.get_shoulder()

@@ -82,7 +82,7 @@ class MoveLift(StateNode):
         if self.running: return
         super().start(event)
         # Temporary hack supplied by Mark Wesley at Anki
-        msg = vector._clad._clad_to_engine_iface.EnableLiftPower(True)
+        msg = anki_vector._clad._clad_to_engine_iface.EnableLiftPower(True)
         self.robot.conn.send_msg(msg)
         self.robot.move_lift(self.speed)
 
@@ -96,7 +96,7 @@ class RelaxLift(StateNode):
         if self.running: return
         super().start(event)
         # Temporary hack supplied by Mark Wesley at Anki
-        msg = vector._clad._clad_to_engine_iface.EnableLiftPower(False)
+        msg = anki_vector._clad._clad_to_engine_iface.EnableLiftPower(False)
         self.robot.conn.send_msg(msg)
 
 class SetLights(StateNode):
@@ -323,8 +323,8 @@ class LookAtObject(StateNode):
                 angle = self.robot.head_angle.radians + adjust_level
             else:
                 angle = self.robot.head_angle.radians
-            angle = vector.robot.MAX_HEAD_ANGLE.radians if angle > vector.robot.MAX_HEAD_ANGLE.radians else angle
-            angle = vector.robot.MIN_HEAD_ANGLE.radians if angle < vector.robot.MIN_HEAD_ANGLE.radians else angle
+            angle = anki_vector.robot.MAX_HEAD_ANGLE.radians if angle > anki_vector.robot.MAX_HEAD_ANGLE.radians else angle
+            angle = anki_vector.robot.MIN_HEAD_ANGLE.radians if angle < anki_vector.robot.MIN_HEAD_ANGLE.radians else angle
         else:
             if isinstance(self.object, WorldObject):
                 rpose = self.robot.world.particle_filter.pose
@@ -349,12 +349,12 @@ class LookAtObject(StateNode):
             else:
                 angle = 0.1
         if abs(self.robot.head_angle.radians - angle) > 0.03:
-            self.handle = self.robot.loop.call_soon(self.move_head, angle)
+            self.handle = self.robot.conn.loop.call_soon(self.move_head, angle)
 
     def move_head(self,angle):
         try:
-            self.robot.set_head_angle(vector.util.radians(angle), in_parallel=True, num_retries=2)
-        except vector.exceptions.RobotBusy:
+            self.robot.set_head_angle(anki_vector.util.radians(angle), in_parallel=True, num_retries=2)
+        except anki_vector.exceptions.RobotBusy:
             print("LookAtObject: robot busy; can't move head to",angle)
             pass
 
@@ -387,8 +387,8 @@ class AbortAllActions(StateNode):
 class AbortHeadAction(StateNode):
     def start(self,event=None):
         super().start(event)
-        actionType = vector._clad._clad_to_engine_vector.RobotActionType.UNKNOWN
-        msg = vector._clad._clad_to_engine_iface.CancelAction(actionType=actionType)
+        actionType = anki_vector._clad._clad_to_engine_vector.RobotActionType.UNKNOWN
+        msg = anki_vector._clad._clad_to_engine_iface.CancelAction(actionType=actionType)
         self.robot.conn.send_msg(msg)
         self.post_completion()
 
@@ -425,14 +425,14 @@ class ColorImageEnabled(ColorImageBase):
             self.post_completion()
         else:
             self.robot.camera.color_image_enabled = self.enabled
-            self.robot.world.add_event_handler(vector.world.EvtNewCameraImage, self.new_image)
+            self.robot.world.add_event_handler(anki_vector.world.EvtNewCameraImage, self.new_image)
 
     def new_image(self,event,**kwargs):
         is_color = self.is_color(event.image)
         if is_color:
             self.robot.world.latest_color_image = event.image
         if is_color == self.enabled:
-            self.robot.world.remove_event_handler(vector.world.EvtNewCameraImage, self.new_image)
+            self.robot.world.remove_event_handler(anki_vector.world.EvtNewCameraImage, self.new_image)
             self.post_completion()
 
 
@@ -444,12 +444,12 @@ class GetColorImage(ColorImageBase):
         self.save_enabled = self.robot.camera.color_image_enabled
         if not self.save_enabled:
             self.robot.camera.color_image_enabled = True
-        self.robot.world.add_event_handler(vector.world.EvtNewCameraImage, self.new_image)
+        self.robot.world.add_event_handler(anki_vector.world.EvtNewCameraImage, self.new_image)
 
     def new_image(self,event,**kwargs):
         if self.is_color(event.image):
             self.robot.world.latest_color_image = event.image
-            self.robot.world.remove_event_handler(vector.world.EvtNewCameraImage, self.new_image)
+            self.robot.world.remove_event_handler(anki_vector.world.EvtNewCameraImage, self.new_image)
             self.robot.camera.color_image_enabled = self.save_enabled
             self.post_data(event.image)
 
@@ -487,7 +487,7 @@ class CoroutineNode(StateNode):
         super().start(event)
         cor = self.coroutine_launcher()
         if inspect.iscoroutine(cor):
-            self.handle = self.robot.loop.create_task(cor)
+            self.handle = self.robot.conn.loop.create_task(cor)
         elif cor is False:
             self.handle = None
         else:
@@ -538,9 +538,9 @@ class DriveWheels(CoroutineNode):
 
 class DriveForward(DriveWheels):
     def __init__(self, distance=50, speed=50, **kwargs):
-        if isinstance(distance, vector.util.Distance):
+        if isinstance(distance, anki_vector.util.Distance):
             distance = distance.distance_mm
-        if isinstance(speed, vector.util.Speed):
+        if isinstance(speed, anki_vector.util.Speed):
             speed = speed.speed_mmps
         if distance < 0:
             distance = -distance
@@ -553,7 +553,7 @@ class DriveForward(DriveWheels):
 
     def start(self,event=None):
         if self.running: return
-        if isinstance(event, DataEvent) and isinstance(event.data, vector.util.Distance):
+        if isinstance(event, DataEvent) and isinstance(event.data, anki_vector.util.Distance):
             self.distance = event.data.distance_mm
         self.start_position = self.robot.pose.position
         super().start(event)
@@ -599,9 +599,9 @@ class SmallTurn(CoroutineNode):
 
 class DriveTurn(DriveWheels):
     def __init__(self, angle=90, speed=50, **kwargs):
-        if isinstance(angle, vector.util.Angle):
+        if isinstance(angle, anki_vector.util.Angle):
             angle = angle.degrees
-        if isinstance(speed, vector.util.Speed):
+        if isinstance(speed, anki_vector.util.Speed):
             speed = speed.speed_mmps
         if speed <= 0:
             raise ValueError('speed parameter must be positive')
@@ -613,7 +613,7 @@ class DriveTurn(DriveWheels):
 
     def start(self,event=None):
         if self.running: return
-        if isinstance(event, DataEvent) and isinstance(event.data, vector.util.Angle):
+        if isinstance(event, DataEvent) and isinstance(event.data, anki_vector.util.Angle):
             self.angle = event.data.degrees
         if self.angle > 0:
             self.l_wheel_speed = -self.speed
@@ -654,13 +654,13 @@ class DriveArc(DriveWheels):
     the appropriate units (degrees, mm, deg/sec, or mm/sec)."""
     def __init__(self, radius=0, angle=None, distance=None,
                  speed=None, angspeed=None, **kwargs):
-        if isinstance(radius, vector.util.Distance):
+        if isinstance(radius, anki_vector.util.Distance):
             radius = radius.distance_mm
-        if isinstance(angle, vector.util.Angle):
+        if isinstance(angle, anki_vector.util.Angle):
             angle = angle.degrees
-        if isinstance(speed, vector.util.Speed):
+        if isinstance(speed, anki_vector.util.Speed):
             speed = speed.speed_mmps
-        if isinstance(angspeed, vector.util.Angle):
+        if isinstance(angspeed, anki_vector.util.Angle):
             angspeed = angspeed.degrees
         self.calculate_wheel_speeds(radius, angle, distance, speed, angspeed)
         super().__init__(self.l_wheel_speed, self.r_wheel_speed, **kwargs)
@@ -750,7 +750,7 @@ class ActionNode(StateNode):
             self.action_kwargs['in_parallel'] = True
         if 'num_retries' not in self.action_kwargs:
             self.action_kwargs['num_retries'] = 2
-        self.vector_action_handle = None
+        self.anki_vector_action_handle = None
 
     def start(self,event=None):
         super().start(event)
@@ -760,17 +760,17 @@ class ActionNode(StateNode):
     def launch_or_retry(self):
         try:
             result = self.action_launcher()
-        except vector.exceptions.RobotBusy:
+        except anki_vector.exceptions.RobotBusy:
             if TRACE.trace_level >= TRACE.statenode_startstop:
                 print('TRACE%d:' % TRACE.statenode_startstop, self, 'launch_action raised RobotBusy')
-            self.handle = self.robot.loop.call_later(self.relaunch_delay, self.launch_or_retry)
+            self.handle = self.robot.conn.loop.call_later(self.relaunch_delay, self.launch_or_retry)
             return
-        if isinstance(result, vector.action.Action):
-            self.vector_action_handle = result
+        if isinstance(result, anki_vector.action.Action):
+            self.anki_vector_action_handle = result
         elif result is None: # Aborted
             return
         else:
-            raise ValueError("Result of %s launch_action() is %s, not a vector.action.Action." %
+            raise ValueError("Result of %s launch_action() is %s, not a anki_vector.action.Action." %
                              (self,result))
         self.post_when_complete()
 
@@ -778,42 +778,42 @@ class ActionNode(StateNode):
         raise Exception('%s lacks an action_launcher() method' % self)
 
     def post_when_complete(self):
-       self.robot.loop.create_task(self.wait_for_completion())
+       self.robot.conn.loop.create_task(self.wait_for_completion())
 
     async def wait_for_completion(self):
-        async_task = self.vector_action_handle.wait_for_completed()
+        async_task = self.anki_vector_action_handle.wait_for_completed()
         await async_task
         if TRACE.trace_level >= TRACE.await_satisfied:
             print('TRACE%d:' % TRACE.await_satisfied, self,
-                  'await satisfied:', self.vector_action_handle)
+                  'await satisfied:', self.anki_vector_action_handle)
         # check status for 'completed'; if not, schedule relaunch or post failure
         if self.running:
-            if self.vector_action_handle.state == 'action_succeeded':
+            if self.anki_vector_action_handle.state == 'action_succeeded':
                 self.post_completion()
-            elif self.vector_action_handle.failure_reason[0] == 'cancelled':
-                print('CANCELLED: ***>',self,self.vector_action_handle)
+            elif self.anki_vector_action_handle.failure_reason[0] == 'cancelled':
+                print('CANCELLED: ***>',self,self.anki_vector_action_handle)
                 self.post_completion()
-            elif self.vector_action_handle.failure_reason[0] == 'retry':
+            elif self.anki_vector_action_handle.failure_reason[0] == 'retry':
                 if self.retry_count < self.action_kwargs['num_retries']:
                     print("*** ACTION %s of %s FAILED WITH CODE 'retry': TRYING AGAIN" %
-                          (self.vector_action_handle, self.name))
+                          (self.anki_vector_action_handle, self.name))
                     self.retry_count += 1
                     self.launch_or_retry()
                 else:
                     print("*** %s ACTION RETRY COUNT EXCEEDED: FAILING" % self.name)
-                    self.post_failure(self.vector_action_handle)
+                    self.post_failure(self.anki_vector_action_handle)
             else:
                 print("*** ACTION %s OF NODE %s FAILED DUE TO %s AND CAN'T BE RETRIED." %
-                      (self.vector_action_handle,
+                      (self.anki_vector_action_handle,
                        self.name,
-                       self.vector_action_handle.failure_reason[0] or 'unknown reason'))
-                self.post_failure(self.vector_action_handle)
+                       self.anki_vector_action_handle.failure_reason[0] or 'unknown reason'))
+                self.post_failure(self.anki_vector_action_handle)
 
     def stop(self):
         if not self.running: return
-        if self.vector_action_handle and self.abort_on_stop and \
-                self.vector_action_handle.is_running:
-            self.vector_action_handle.abort()
+        if self.anki_vector_action_handle and self.abort_on_stop and \
+                self.anki_vector_action_handle.is_running:
+            self.anki_vector_action_handle.abort()
         super().stop()
 
 
@@ -854,12 +854,12 @@ class Forward(ActionNode):
                  speed=speed_mmps(50), abort_on_stop=True, **action_kwargs):
         if isinstance(distance, (int,float)):
             distance = distance_mm(distance)
-        elif not isinstance(distance, vector.util.Distance):
-            raise ValueError('%s distance must be a number or a vector.util.Distance' % self)
+        elif not isinstance(distance, anki_vector.util.Distance):
+            raise ValueError('%s distance must be a number or a anki_vector.util.Distance' % self)
         if isinstance(speed, (int,float)):
             speed = speed_mmps(speed)
-        elif not isinstance(speed, vector.util.Speed):
-            raise ValueError('%s speed must be a number or a vector.util.Speed' % self)
+        elif not isinstance(speed, anki_vector.util.Speed):
+            raise ValueError('%s speed must be a number or a anki_vector.util.Speed' % self)
         self.distance = distance
         self.speed = speed
         if 'should_play_anim' not in action_kwargs:
@@ -870,7 +870,7 @@ class Forward(ActionNode):
 
     def start(self,event=None):
         if self.running: return
-        if isinstance(event, DataEvent) and isinstance(event.data, vector.util.Distance):
+        if isinstance(event, DataEvent) and isinstance(event.data, anki_vector.util.Distance):
             self.distance = event.data
         super().start(event)
 
@@ -886,15 +886,15 @@ class Turn(ActionNode):
             angle = degrees(angle)
         elif angle is None:
             pass
-        elif not isinstance(angle, vector.util.Angle):
-            raise ValueError('%s angle must be a number or a vector.util.Angle' % self)
+        elif not isinstance(angle, anki_vector.util.Angle):
+            raise ValueError('%s angle must be a number or a anki_vector.util.Angle' % self)
         self.angle = angle
         self.action_kwargs = action_kwargs
         super().__init__(abort_on_stop)
 
     def start(self,event=None):
         if self.running: return
-        if isinstance(event, DataEvent) and isinstance(event.data, vector.util.Angle):
+        if isinstance(event, DataEvent) and isinstance(event.data, anki_vector.util.Angle):
             self.angle = event.data
         super().start(event)
 
@@ -918,15 +918,15 @@ class SetHeadAngle(ActionNode):
     def __init__(self, angle=degrees(0), abort_on_stop=True, **action_kwargs):
         if isinstance(angle, (int,float)):
             angle = degrees(angle)
-        elif not isinstance(angle, vector.util.Angle):
-            raise ValueError('%s angle must be a number or a vector.util.Angle' % self)
+        elif not isinstance(angle, anki_vector.util.Angle):
+            raise ValueError('%s angle must be a number or a anki_vector.util.Angle' % self)
         self.angle = angle
         self.action_kwargs = action_kwargs
         super().__init__(abort_on_stop)
 
     def start(self,event=None):
         if self.running: return
-        if isinstance(event, DataEvent) and isinstance(event.data, vector.util.Angle):
+        if isinstance(event, DataEvent) and isinstance(event.data, anki_vector.util.Angle):
             self.angle = event.data
         super().start(event)
 
@@ -942,7 +942,7 @@ class SetLiftHeight(ActionNode):
 
     def action_launcher(self):
         # Temporary hack supplied by Mark Wesley at Anki
-        msg = vector._clad._clad_to_engine_iface.EnableLiftPower(True)
+        msg = anki_vector._clad._clad_to_engine_iface.EnableLiftPower(True)
         self.robot.conn.send_msg(msg)
         return self.robot.set_lift_height(self.height, **self.action_kwargs)
 
@@ -952,17 +952,17 @@ class SetLiftAngle(SetLiftHeight):
         #def get_theta(height):
         #   return math.asin((height-45)/66)
 
-        if isinstance(angle, vector.util.Angle):
+        if isinstance(angle, anki_vector.util.Angle):
             angle = angle.degrees
         self.angle = angle
         super().__init__(0, abort_on_stop=abort_on_stop, **action_kwargs)
 
     def start(self,event=None):
         if self.running: return
-        if isinstance(event, DataEvent) and isinstance(event.data, vector.util.Angle):
+        if isinstance(event, DataEvent) and isinstance(event.data, anki_vector.util.Angle):
             self.angle = event.data.degrees
-        min_theta = vector.robot.MIN_LIFT_ANGLE.degrees
-        max_theta = vector.robot.MAX_LIFT_ANGLE.degrees
+        min_theta = anki_vector.robot.MIN_LIFT_ANGLE.degrees
+        max_theta = anki_vector.robot.MAX_LIFT_ANGLE.degrees
         angle_range = max_theta - min_theta
         self.height = (self.angle - min_theta) / angle_range
         super().start(event)
@@ -978,7 +978,7 @@ class DockWithCube(ActionNode):
     def start(self,event=None):
         if self.running: return
         if isinstance(event, DataEvent) and \
-                isinstance(event.data,vector.objects.LightCube):
+                isinstance(event.data,anki_vector.objects.LightCube):
             self.object = event.data
         super().start(event)
 
@@ -998,7 +998,7 @@ class PickUpObject(ActionNode):
     def start(self,event=None):
         if self.running: return
         if isinstance(event, DataEvent) and \
-                isinstance(event.data,vector.objects.LightCube):
+                isinstance(event.data,anki_vector.objects.LightCube):
             self.object = event.data
         super().start(event)
 
@@ -1018,7 +1018,7 @@ class PlaceObjectOnGroundHere(ActionNode):
     def start(self,event=None):
         if self.running: return
         if isinstance(event, DataEvent) and \
-                isinstance(event.data,vector.objects.LightCube):
+                isinstance(event.data,anki_vector.objects.LightCube):
             self.object = event.data
         super().start(event)
 
@@ -1037,7 +1037,7 @@ class PlaceOnObject(ActionNode):
     def start(self,event=None):
         if self.running: return
         if isinstance(event, DataEvent) and \
-                isinstance(event.data,vector.objects.LightCube):
+                isinstance(event.data,anki_vector.objects.LightCube):
             self.object = event.data
         super().start(event)
 
@@ -1060,23 +1060,24 @@ class AnimationNode(ActionNode):
         return self.robot.play_anim(self.anim_name, **self.action_kwargs)
 
 class AnimationTriggerNode(ActionNode):
-    def __init__(self, trigger=vector.anim.Triggers.CubePouncePounceNormal, **kwargs):
-        if not isinstance(trigger, vector.anim._AnimTrigger):
-            raise TypeError('%s is not an instance of vector.anim._AnimTrigger' %
+    def __init__(self, trigger="", **kwargs):
+        self.robot.anim.load_animation_list()
+        if trigger not in robot.anim.anim_list:
+            raise TypeError('%s is not an instance of anki_vector.animation.AnimationComponent.anim_list' %
                             repr(trigger))
         self.trigger = trigger
         self.action_kwargs = kwargs
         super().__init__()
 
     def action_launcher(self):
-        return self.robot.play_anim_trigger(self.trigger, **self.action_kwargs)
+        return self.robot.play_animation(self.trigger, **self.action_kwargs)
 
 #________________ Behaviors ________________
 
 class StartBehavior(StateNode):
     def __init__(self, behavior=None, stop_on_exit=True):
-        if not isinstance(behavior, vector.behavior._BehaviorType):
-            raise ValueError("'%s' isn't an instance of vector.behavior._BehaviorType" %
+        if not isinstance(behavior, anki_vector.behavior._BehaviorType):
+            raise ValueError("'%s' isn't an instance of anki_vector.behavior._BehaviorType" %
                              repr(behavior))
         self.behavior = behavior
         self.behavior_handle = None
@@ -1123,24 +1124,24 @@ class StopBehavior(StateNode):
 
 class FindFaces(StartBehavior):
     def __init__(self,stop_on_exit=True):
-        super().__init__(vector.robot.behavior.BehaviorTypes.FindFaces,stop_on_exit)
+        super().__init__(anki_vector.robot.behavior.BehaviorTypes.FindFaces,stop_on_exit)
 
 class KnockOverCubes(StartBehavior):
     def __init__(self,stop_on_exit=True):
-        super().__init__(vector.robot.behavior.BehaviorTypes.KnockOverCubes,stop_on_exit)
+        super().__init__(anki_vector.robot.behavior.BehaviorTypes.KnockOverCubes,stop_on_exit)
 
 class LookAroundInPlace(StartBehavior):
     def __init__(self,stop_on_exit=True):
-        super().__init__(vector.robot.behavior.BehaviorTypes.LookAroundInPlace,stop_on_exit)
+        super().__init__(anki_vector.robot.behavior.BehaviorTypes.LookAroundInPlace,stop_on_exit)
 
 class PounceOnMotion(StartBehavior):
     def __init__(self,stop_on_exit=True):
-        super().__init__(vector.robot.behavior.BehaviorTypes.PounceOnMotion,stop_on_exit)
+        super().__init__(anki_vector.robot.behavior.BehaviorTypes.PounceOnMotion,stop_on_exit)
 
 class RollBlock(StartBehavior):
     def __init__(self,stop_on_exit=True):
-        super().__init__(vector.robot.behavior.BehaviorTypes.RollBlock,stop_on_exit)
+        super().__init__(anki_vector.robot.behavior.BehaviorTypes.RollBlock,stop_on_exit)
 
 class StackBlocks(StartBehavior):
     def __init__(self,stop_on_exit=True):
-        super().__init__(vector.robot.behavior.BehaviorTypes.StackBlocks,stop_on_exit)
+        super().__init__(anki_vector.robot.behavior.BehaviorTypes.StackBlocks,stop_on_exit)

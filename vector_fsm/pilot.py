@@ -267,7 +267,7 @@ class PilotBase(StateNode):
         last_heading = self.robot.pose.rotation.angle_z.degrees
         traveled = 0
         cor = self.robot.drive_wheels(l_wheel_speed, r_wheel_speed)
-        self.handle = self.robot.loop.create_task(cor)
+        self.handle = self.robot.conn.loop.create_task(cor)
         while abs(traveled) < abs(angle):
             await asyncio.sleep(0.05)
             p0 = last_heading
@@ -336,7 +336,7 @@ class PilotToPoseOld(PilotBase):
         if self.verbose:
             print('Navigation Plan:')
             [print(y) for y in self.plan.steps]
-        self.robot.loop.create_task(self.execute_plan())
+        self.robot.conn.loop.create_task(self.execute_plan())
 
     async def execute_plan(self):
         print('-------- Executing Nav Plan --------')

@@ -1,4 +1,5 @@
-from anki_vector.util import radians, degrees, Pose, Rotation
+from anki_vector.util import radians, degrees, Pose
+from anki_vector.util import Quaternion as Rotation
 
 from . import base
 from . import program

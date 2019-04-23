@@ -19,7 +19,7 @@ from . import transform
 from . import worldmap
 
 import anki_vector
-from anki_vector.nav_memory_map import NodeContentTypes
+from anki_vector.nav_map import NavNodeContentTypes
 
 WINDOW = None
 EXCEPTION_COUNTER = 0
@@ -301,7 +301,7 @@ class WorldMapViewer():
             theta = i * (360/num_slices) * (pi/180)
             glVertex3f(r * cos(theta), r*sin(theta), 0.)
         glEnd()
-            
+
 
     def make_chip(self,chip):
         global gl_lists
@@ -778,7 +778,7 @@ class WorldMapViewer():
 
     def make_memory(self):
         global gl_lists
-        quadtree = self.robot.world.nav_memory_map
+        quadtree = self.robot.world.nav_map
         if quadtree and self.show_memory_map:
             c = glGenLists(1)
             glNewList(c, GL_COMPILE)
@@ -787,17 +787,17 @@ class WorldMapViewer():
             gl_lists.append(c)
 
     def memory_tree_crawl(self, node, depth):
-        if node.content == NodeContentTypes.ClearOfObstacle:
+        if node.content == NavNodeContentTypes.ClearOfObstacle:
             obj_color = color_green
-        elif node.content == NodeContentTypes.ClearOfCliff:
+        elif node.content == NavNodeContentTypes.ClearOfCliff:
             obj_color = color_light_green
-        elif node.content == NodeContentTypes.ObstacleCube:
+        elif node.content == NavNodeContentTypes.ObstacleCube:
             obj_color = color_orange
-        elif node.content == NodeContentTypes.ObstacleCharger:
+        elif node.content == NavNodeContentTypes.ObstacleCharger:
             obj_color = color_blue
-        elif node.content == NodeContentTypes.VisionBorder:
+        elif node.content == NavNodeContentTypes.VisionBorder:
             obj_color = color_cyan
-        elif node.content == NodeContentTypes.Cliff:
+        elif node.content == NavNodeContentTypes.Cliff:
             obj_color = color_red
         else:
             obj_color = color_light_gray
@@ -832,7 +832,7 @@ class WorldMapViewer():
 
     def window_creator(self):
         global WINDOW
-        WINDOW = opengl.create_window(bytes(self.windowName,'utf-8'), (self.width,self.height))        
+        WINDOW = opengl.create_window(bytes(self.windowName,'utf-8'), (self.width,self.height))
         glutDisplayFunc(self.display)
         glutReshapeFunc(self.reshape)
         glutKeyboardFunc(self.keyPressed)
@@ -847,7 +847,7 @@ class WorldMapViewer():
         glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
     def start(self): # Displays in background
-        self.robot.world.request_nav_memory_map(1)
+        # self.robot.world.request_nav_memory_map(1)
         if not WINDOW:
             opengl.init()
             opengl.CREATION_QUEUE.append(self.window_creator)
@@ -897,11 +897,11 @@ class WorldMapViewer():
             print('Worldmap viewer exception:',e)
             EXCEPTION_COUNTER += 1
             if EXCEPTION_COUNTER >= 2:
-                print('\n\nworldmap_viewer:  Too many errors.  Stopping redisplay.') 
+                print('\n\nworldmap_viewer:  Too many errors.  Stopping redisplay.')
                 DISPLAY_ENABLED = False
             else:
                 raise
-                
+
 
     def keyPressed(self, key, x, y):
         global DISPLAY_ENABLED, EXCEPTION_COUNTER
