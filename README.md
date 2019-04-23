@@ -1,3 +1,5 @@
+### This is a project for CMU 15494/694 course, developed by Aravind Vadali and Fengzhi Li. Special thanks to Professor Dave Touretzky who developed cozmo-tools https://github.com/touretzkyds/cozmo-tools.
+
 # vector-tools
 
 For a radically different approach to Vector programming more suited to beginners, try Calypso at https://Calypso.software
@@ -19,3 +21,4 @@ Type `monitor(robot)` to start monitoring.  See doc for more options.
 the vector_fsm notation to .py files that are ready to run.
 
 __Note__: you can install all the python dependencies by running `pip3 install -r requirements.txt`
+
