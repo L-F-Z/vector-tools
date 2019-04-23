@@ -8,8 +8,8 @@ import math
 from math import pi
 import cv2
 
-import vector
-from vector.util import distance_mm, speed_mmps, degrees, Distance, Angle
+import anki_vector
+from anki_vector.util import distance_mm, speed_mmps, degrees, Distance, Angle
 
 from .base import *
 from .events import *

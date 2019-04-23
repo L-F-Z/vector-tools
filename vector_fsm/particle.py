@@ -6,7 +6,7 @@ import math, array, random
 from math import pi, sqrt, sin, cos, atan2, exp
 import numpy as np
 import cv2
-import vector
+import anki_vector
 
 from .transform import wrap_angle, wrap_selected_angles, tprint, rotation_matrix_to_euler_angles
 from .aruco import ArucoMarker

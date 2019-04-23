@@ -3,7 +3,7 @@
     All other events are defined here.
 """
 
-import vector
+import anki_vector
 
 from .evbase import Event
 

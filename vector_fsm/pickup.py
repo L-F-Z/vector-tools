@@ -1,5 +1,5 @@
-from vector.util import Pose
-from vector.objects import LightCube
+from anki_vector.util import Pose
+from anki_vector.objects import LightCube
 
 from .nodes import *
 from .transitions import *

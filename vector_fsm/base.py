@@ -5,7 +5,7 @@
 
 """
 
-import vector
+import anki_vector
 
 from .trace import TRACE
 from .evbase import Event, EventListener

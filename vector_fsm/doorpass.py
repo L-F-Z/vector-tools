@@ -1,4 +1,4 @@
-from vector.util import Pose
+from anki_vector.util import Pose
 from cv2 import Rodrigues
 from numpy import matrix, tan, arctan2
 

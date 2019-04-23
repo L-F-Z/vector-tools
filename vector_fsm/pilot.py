@@ -10,7 +10,7 @@ from .events import PilotEvent
 from .transitions import CompletionTrans, FailureTrans, DataTrans
 from .vector_kin import wheelbase, center_of_rotation_offset
 
-from vector.util import distance_mm, speed_mmps
+from anki_vector.util import distance_mm, speed_mmps
 
 #---------------- Pilot Exceptions and Events ----------------
 

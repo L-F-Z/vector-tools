@@ -1,5 +1,5 @@
 from vector_fsm import *
-from vector.util import degrees, Pose
+from anki_vector.util import degrees, Pose
 
 class PF_Cube(StateMachineProgram):
     def __init__(self):

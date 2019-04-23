@@ -1,6 +1,6 @@
 from math import pi
 
-import vector
+import anki_vector
 
 from .kine import *
 from vector_fsm import transform

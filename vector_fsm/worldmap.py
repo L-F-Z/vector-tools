@@ -1,9 +1,9 @@
 from math import pi, inf, sin, cos, tan, atan2, sqrt
 import time
 
-from vector.faces import Face
-from vector.objects import LightCube, CustomObject
-from vector.util import Pose
+from anki_vector.faces import Face
+from anki_vector.objects import LightCube, CustomObject
+from anki_vector.util import Pose
 
 from . import evbase
 from . import transform

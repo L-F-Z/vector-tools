@@ -14,7 +14,7 @@ In the particle viewer window:
 """
 
 from vector_fsm import *
-from vector.util import degrees, Pose
+from anki_vector.util import degrees, Pose
 
 class PF_Aruco(StateMachineProgram):
     def __init__(self):

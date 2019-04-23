@@ -20,9 +20,9 @@ nRange = 1.0
 import time
 import numpy as np
 import cv2
-import vector
+import anki_vector
 from PIL import Image, ImageEnhance
-from vector.util import degrees, distance_mm, speed_mmps
+from anki_vector.util import degrees, distance_mm, speed_mmps
 try:
     from OpenGL.GLUT import *
     from OpenGL.GL import *

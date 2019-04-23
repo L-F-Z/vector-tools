@@ -6,7 +6,7 @@ from time import sleep
 from numpy import inf, arctan2, pi, cos, sin
 from .worldmap import RobotForeignObj, LightCubeForeignObj, WallObj
 from .transform import wrap_angle
-from vector.objects import LightCube
+from anki_vector.objects import LightCube
 from copy import deepcopy
 
 class ServerThread(threading.Thread):

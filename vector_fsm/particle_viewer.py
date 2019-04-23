@@ -15,8 +15,8 @@ from math import sin, cos, pi, atan2, sqrt
 import array
 import numpy as np
 
-import vector
-from vector.util import distance_mm, speed_mmps, degrees
+import anki_vector
+from anki_vector.util import distance_mm, speed_mmps, degrees
 
 from . import opengl
 

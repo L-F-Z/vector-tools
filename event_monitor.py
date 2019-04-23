@@ -32,7 +32,7 @@ ChangeLog
 
 import re
 
-import vector
+import anki_vector
 
 
 def print_prefix(evt):
@@ -41,7 +41,7 @@ def print_prefix(evt):
 
 
 def print_object(obj):
-    if isinstance(obj,vector.objects.LightCube):
+    if isinstance(obj,anki_vector.objects.LightCube):
         cube_id = next(k for k,v in robot.world.light_cubes.items() if v==obj)
         print('LightCube-',cube_id,sep='',end='')
     else:
@@ -59,9 +59,9 @@ def monitor_generic(evt, **kwargs):
         print(' ', end='')
     if 'action' in kwargs:
         action = kwargs['action']
-        if isinstance(action, vector.anim.Animation):
+        if isinstance(action, anki_vector.anim.Animation):
             print(action.anim_name, '', end='')
-        elif isinstance(action, vector.anim.AnimationTrigger):
+        elif isinstance(action, anki_vector.anim.AnimationTrigger):
             print(action.trigger.name, '', end='')
     print(set(kwargs.keys()))
 
@@ -69,9 +69,9 @@ def monitor_generic(evt, **kwargs):
 def monitor_EvtActionCompleted(evt, action, state, failure_code, failure_reason, **kwargs):
     print_prefix(evt)
     print_object(action)
-    if isinstance(action, vector.anim.Animation):
+    if isinstance(action, anki_vector.anim.Animation):
         print('', action.anim_name, end='')
-    elif isinstance(action, vector.anim.AnimationTrigger):
+    elif isinstance(action, anki_vector.anim.AnimationTrigger):
         print('', action.trigger.name, end='')
     print('',state,end='')
     if failure_code is not None:
@@ -106,31 +106,31 @@ def monitor_face(evt, face, **kwargs):
     print(name, ' (%s) ' % expr, ' face_id=', face.face_id, '  ', kw, sep='')
 
 dispatch_table = {
-  vector.action.EvtActionStarted        : monitor_generic,
-  vector.action.EvtActionCompleted      : monitor_EvtActionCompleted,
-  vector.behavior.EvtBehaviorStarted    : monitor_generic,
-  vector.behavior.EvtBehaviorStopped    : monitor_generic,
-  vector.anim.EvtAnimationsLoaded       : monitor_generic,
-  vector.anim.EvtAnimationCompleted     : monitor_EvtActionCompleted,
-  vector.objects.EvtObjectAppeared      : monitor_generic,
-  vector.objects.EvtObjectDisappeared   : monitor_generic,
-  vector.objects.EvtObjectMovingStarted : monitor_EvtObjectMovingStarted,
-  vector.objects.EvtObjectMovingStopped : monitor_EvtObjectMovingStopped,
-  vector.objects.EvtObjectObserved      : monitor_generic,
-  vector.objects.EvtObjectTapped        : monitor_EvtObjectTapped,
-  vector.faces.EvtFaceAppeared          : monitor_face,
-  vector.faces.EvtFaceObserved          : monitor_face,
-  vector.faces.EvtFaceDisappeared       : monitor_face,
+  anki_vector.action.EvtActionStarted        : monitor_generic,
+  anki_vector.action.EvtActionCompleted      : monitor_EvtActionCompleted,
+  anki_vector.behavior.EvtBehaviorStarted    : monitor_generic,
+  anki_vector.behavior.EvtBehaviorStopped    : monitor_generic,
+  anki_vector.anim.EvtAnimationsLoaded       : monitor_generic,
+  anki_vector.anim.EvtAnimationCompleted     : monitor_EvtActionCompleted,
+  anki_vector.objects.EvtObjectAppeared      : monitor_generic,
+  anki_vector.objects.EvtObjectDisappeared   : monitor_generic,
+  anki_vector.objects.EvtObjectMovingStarted : monitor_EvtObjectMovingStarted,
+  anki_vector.objects.EvtObjectMovingStopped : monitor_EvtObjectMovingStopped,
+  anki_vector.objects.EvtObjectObserved      : monitor_generic,
+  anki_vector.objects.EvtObjectTapped        : monitor_EvtObjectTapped,
+  anki_vector.faces.EvtFaceAppeared          : monitor_face,
+  anki_vector.faces.EvtFaceObserved          : monitor_face,
+  anki_vector.faces.EvtFaceDisappeared       : monitor_face,
 }
 
 excluded_events = {    # Occur too frequently to monitor by default
-    vector.objects.EvtObjectObserved,
-    vector.faces.EvtFaceObserved,
+    anki_vector.objects.EvtObjectObserved,
+    anki_vector.faces.EvtFaceObserved,
 }
 
 
 def monitor(_robot, evt_class=None):
-    if not isinstance(_robot, vector.robot.Robot):
+    if not isinstance(_robot, anki_vector.robot.Robot):
         raise TypeError('First argument must be a Robot instance')
     if evt_class is not None and not issubclass(evt_class, vector.event.Event):
         raise TypeError('Second argument must be an Event subclass')
@@ -149,7 +149,7 @@ def monitor(_robot, evt_class=None):
 def unmonitor(_robot, evt_class=None):
     if not isinstance(_robot, vector.robot.Robot):
         raise TypeError('First argument must be a Robot instance')
-    if evt_class is not None and not issubclass(evt_class, vector.event.Event):
+    if evt_class is not None and not issubclass(evt_class, anki_vector.event.Event):
         raise TypeError('Second argument must be an Event subclass')
     global robot
     robot = _robot

@@ -1,5 +1,5 @@
-import vector
-from vector.objects import CustomObject, CustomObjectMarkers, CustomObjectTypes
+import anki_vector
+from anki_vector.objects import CustomObject, CustomObjectMarkers, CustomObjectTypes
 
 custom_marker_types = []
 custom_cube_types = []

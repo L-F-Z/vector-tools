@@ -8,7 +8,7 @@ import numpy
 import numpy as np
 import cv2
 
-import vector
+import anki_vector
 
 from .evbase import EventRouter
 from .base import StateNode

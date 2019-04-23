@@ -8,7 +8,7 @@
 
 import functools
 
-import vector
+import anki_vector
 
 from .trace import TRACE
 

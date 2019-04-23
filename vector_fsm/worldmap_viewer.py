@@ -18,8 +18,8 @@ from . import opengl
 from . import transform
 from . import worldmap
 
-import vector
-from vector.nav_memory_map import NodeContentTypes
+import anki_vector
+from anki_vector.nav_memory_map import NodeContentTypes
 
 WINDOW = None
 EXCEPTION_COUNTER = 0

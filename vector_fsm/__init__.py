@@ -1,4 +1,4 @@
-from vector.util import radians, degrees, Pose, Rotation
+from anki_vector.util import radians, degrees, Pose, Rotation
 
 from . import base
 from . import program
