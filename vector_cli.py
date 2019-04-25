@@ -16,7 +16,13 @@ import re
 import subprocess
 import time
 import traceback
+from collections import namedtuple
 from importlib import __import__, reload
+
+try:
+    from IPython.terminal.embed import InteractiveShellEmbed
+except ImportError:
+    sys.exit('Cannot import from ipython: Do `pip3 install ipython` to install')
 
 import anki_vector
 from anki_vector import *
@@ -33,6 +39,21 @@ histfile = '.pythonhistory'
 RUNNING = False
 
 robot = None
+
+def setup_robot(robot):
+    ConfigTuple = namedtuple('ConfigTuple', ['x', 'y'])
+    class CameraConfig(object):
+        def __init__(self, focal_length_x, focal_length_y, center_x, center_y, fov_x_degrees, fov_y_degrees, min_exposure_time_ms, max_exposure_time_ms, min_gain, max_gain):
+            self.focal_length = ConfigTuple(focal_length_x, focal_length_y)
+            self.center = ConfigTuple(center_x, center_y)
+            self.fov_x = fov_x_degrees
+            self.fov_y = fov_y_degrees
+            self.max_gain = max_gain
+            self.min_gain = min_gain
+            self.max_exposure_time_ms = max_exposure_time_ms
+            self.min_exposure_time_ms = min_exposure_time_ms
+    # Completely guessing the focal lengths for Vector. The exposure times and gains aren't important to vector-tools, but they are in cozmo's camera.config file so we include them here.
+    robot.camera.config = CameraConfig(288, 288, 640, 360, 90, 50, 0.0, 0.0, 0.0, 0.0)
 
 def setup():
     global RUNNING, histfile, robot
@@ -422,7 +443,7 @@ def cli_loop(robot):
             try:
                 os_version = platform.system()
                 if os_version == 'Darwin':   # Tkinter breaks console on Macs
-                    print('C> ', end='')
+                    print('VectorCLI>>> ', end='')
                     cli_loop._line = sys.stdin.readline().strip()
                 else:
                     cli_loop._line = cli_loop._console.raw_input('VectorCLI>>> ').strip()
@@ -482,8 +503,10 @@ def cli_loop(robot):
                 print(ans,end='\n\n')
         except KeyboardInterrupt:
             print('Keyboard interrupt!')
+            robot.disconnect()
         except SystemExit:
             print('Type exit() again to exit Python.')
+            robot.disconnect()
             RUNNING = False
         except Exception:
             traceback.print_exc()
@@ -493,11 +516,12 @@ def cli_loop(robot):
 def main():
     global robot
     args = anki_vector.util.parse_command_args()
-    with anki_vector.Robot(args.serial) as robot:
+    with anki_vector.Robot(args.serial, enable_camera_feed=True) as robot:
         try:
             robot.erouter = vector_fsm.evbase.EventRouter()
             robot.erouter.robot = robot
             vector_fsm.evbase.robot_for_loading = robot
+            setup_robot(robot)
         except:
             pass
         cli_loop(robot)

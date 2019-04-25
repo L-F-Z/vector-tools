@@ -345,45 +345,44 @@ class CubeSensorModel(SensorModel):
         if not force and dist < 5 and abs(turn_angle) < math.radians(5):
             return False
         self.last_evaluate_pose = self.robot.pose
-        seenCubes = [cube for cube in world.light_cubes.values() if cube.is_visible]
-        # Process each seen cube if it's a landmark:
-        for cube in seenCubes:
-            cube_id = 'Cube-' + cube.cube_id
-            if cube_id in self.landmarks:
-                sensor_dx = cube.pose.position.x - robot.pose.position.x
-                sensor_dy = cube.pose.position.y - robot.pose.position.y
-                sensor_dist = sqrt(sensor_dx*sensor_dx + sensor_dy*sensor_dy)
-                angle = atan2(sensor_dy,sensor_dx)
-                sensor_bearing = wrap_angle(angle - robot.pose.rotation.angle_z.radians)
-                #sensor_orient = wrap_angle(robot.pose.rotation.angle_z.radians -
-                #                           cube.pose.rotation.angle_z.radians +
-                #                           sensor_bearing)
+        # Process seen cube if it's a landmark:
+        cube = world.light_cube
+        cube_id = 'Cube-' + cube.cube_id
+        if cube.is_visible and cube_id in self.landmarks:
+            sensor_dx = cube.pose.position.x - robot.pose.position.x
+            sensor_dy = cube.pose.position.y - robot.pose.position.y
+            sensor_dist = sqrt(sensor_dx*sensor_dx + sensor_dy*sensor_dy)
+            angle = atan2(sensor_dy,sensor_dx)
+            sensor_bearing = wrap_angle(angle - robot.pose.rotation.angle_z.radians)
+            #sensor_orient = wrap_angle(robot.pose.rotation.angle_z.radians -
+            #                           cube.pose.rotation.angle_z.radians +
+            #                           sensor_bearing)
+            # simplifies to...
+            sensor_orient = wrap_angle(angle - cube.pose.rotation.angle_z.radians)
+
+            landmark_spec = self.landmarks[cube_id]
+            lm_x = landmark_spec.position.x
+            lm_y = landmark_spec.position.y
+            lm_orient = landmark_spec.rotation.angle_z.radians
+
+            for p in particles:
+                # ... Bearing and distance errror:
+                # Use sensed bearing and distance to get particle's
+                # prediction of landmark position on the world map.
+                predicted_pos_x = p.x + sensor_dist * cos(p.theta + sensor_bearing)
+                predicted_pos_y = p.y + sensor_dist * sin(p.theta + sensor_bearing)
+                dx = lm_x - predicted_pos_x
+                dy = lm_y - predicted_pos_y
+                error1_sq = dx*dx + dy*dy
+                # ... Orientation error:
+                #predicted_bearing = wrap_angle(atan2(lm_y-p.y, lm_x-p.x) - p.theta)
+                #predicted_orient = wrap_angle(p.theta - lm_orient + predicted_bearing)
                 # simplifies to...
-                sensor_orient = wrap_angle(angle - cube.pose.rotation.angle_z.radians)
+                predicted_orient = wrap_angle(atan2(lm_y-p.y, lm_x-p.x) - lm_orient)
+                error2_sq = (sensor_dist*wrap_angle(predicted_orient - sensor_orient))**2
 
-                landmark_spec = self.landmarks[cube_id]
-                lm_x = landmark_spec.position.x
-                lm_y = landmark_spec.position.y
-                lm_orient = landmark_spec.rotation.angle_z.radians
-
-                for p in particles:
-                    # ... Bearing and distance errror:
-                    # Use sensed bearing and distance to get particle's
-                    # prediction of landmark position on the world map.
-                    predicted_pos_x = p.x + sensor_dist * cos(p.theta + sensor_bearing)
-                    predicted_pos_y = p.y + sensor_dist * sin(p.theta + sensor_bearing)
-                    dx = lm_x - predicted_pos_x
-                    dy = lm_y - predicted_pos_y
-                    error1_sq = dx*dx + dy*dy
-                    # ... Orientation error:
-                    #predicted_bearing = wrap_angle(atan2(lm_y-p.y, lm_x-p.x) - p.theta)
-                    #predicted_orient = wrap_angle(p.theta - lm_orient + predicted_bearing)
-                    # simplifies to...
-                    predicted_orient = wrap_angle(atan2(lm_y-p.y, lm_x-p.x) - lm_orient)
-                    error2_sq = (sensor_dist*wrap_angle(predicted_orient - sensor_orient))**2
-
-                    error_sq = error1_sq + error2_sq
-                    p.log_weight -= error_sq / self.distance_variance
+                error_sq = error1_sq + error2_sq
+                p.log_weight -= error_sq / self.distance_variance
         return True
 
 
