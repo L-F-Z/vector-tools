@@ -59,7 +59,7 @@ class RobotPosition(ParticleInitializer):
         self.x = x
         self.y = y
         self.theta = theta
-        
+
     def initialize(self, robot):
         if self.x is None:
             x = robot.pose.position.x
@@ -77,7 +77,7 @@ class RobotPosition(ParticleInitializer):
             p.weight = 1.0
         self.pf.pose = (x, y, theta)
         self.pf.motion_model.old_pose = robot.pose
-    
+
 
 #================ Motion Model ================
 
@@ -250,7 +250,7 @@ class ArucoCombinedSensorModel(SensorModel):
         # Called with force=True from particle_viewer to force evaluation.
 
         # Don't evaluate if robot is still moving; ArUco info will be bad.
-        if self.robot.is_moving:
+        if self.robot.status.is_robot_moving:
             return False
 
         # Only evaluate if the robot moved enough for evaluation to be worthwhile.
@@ -298,36 +298,34 @@ class CubeOrientSensorModel(SensorModel):
         if not force and dist < 5 and abs(turn_angle) < math.radians(5):
             return False
         self.last_evaluate_pose = self.robot.pose
-        seenCubes = [cube for cube in self.robot.world.light_cubes.values()
-                     if cube.is_visible]
-        # Process each seen cube if it's a landmark:
-        for cube in seenCubes:
-            if cube in self.landmarks:
-                sensor_dx = cube.pose.position.x - self.robot.pose.position.x
-                sensor_dy = cube.pose.position.y - self.robot.pose.position.y
-                sensor_dist = sqrt(sensor_dx*sensor_dx + sensor_dy*sensor_dy)
-                angle = atan2(sensor_dy,sensor_dx)
-                sensor_bearing = \
-                    wrap_angle(angle - self.robot.pose.rotation.angle_z.radians)
-                #sensor_orient = wrap_angle(robot.pose.rotation.angle_z.radians -
-                #                           cube.pose.rotation.angle_z.radians +
-                #                           sensor_bearing)
+
+        cube = self.robot.world.connected_light_cube
+        if cube is not None and cube.is_visible and cube in self.landmarks:
+            sensor_dx = cube.pose.position.x - self.robot.pose.position.x
+            sensor_dy = cube.pose.position.y - self.robot.pose.position.y
+            sensor_dist = sqrt(sensor_dx*sensor_dx + sensor_dy*sensor_dy)
+            angle = atan2(sensor_dy,sensor_dx)
+            sensor_bearing = \
+                wrap_angle(angle - self.robot.pose.rotation.angle_z.radians)
+            #sensor_orient = wrap_angle(robot.pose.rotation.angle_z.radians -
+            #                           cube.pose.rotation.angle_z.radians +
+            #                           sensor_bearing)
+            # simplifies to...
+            sensor_orient = wrap_angle(angle - cube.pose.rotation.angle_z.radians)
+
+            landmark_spec = self.landmarks[cube]
+            lm_x = landmark_spec.position.x
+            lm_y = landmark_spec.position.y
+            lm_orient = landmark_spec.rotation.angle_z.radians
+
+            for p in particles:
+                # ... Orientation error:
+                #predicted_bearing = wrap_angle(atan2(lm_y-p.y, lm_x-p.x) - p.theta)
+                #predicted_orient = wrap_angle(p.theta - lm_orient + predicted_bearing)
                 # simplifies to...
-                sensor_orient = wrap_angle(angle - cube.pose.rotation.angle_z.radians)
-
-                landmark_spec = self.landmarks[cube]
-                lm_x = landmark_spec.position.x
-                lm_y = landmark_spec.position.y
-                lm_orient = landmark_spec.rotation.angle_z.radians
-
-                for p in particles:
-                    # ... Orientation error:
-                    #predicted_bearing = wrap_angle(atan2(lm_y-p.y, lm_x-p.x) - p.theta)
-                    #predicted_orient = wrap_angle(p.theta - lm_orient + predicted_bearing)
-                    # simplifies to...
-                    predicted_orient = wrap_angle(atan2(lm_y-p.y, lm_x-p.x) - lm_orient)
-                    error_sq = ((predicted_orient - sensor_orient)*sensor_dist)**2
-                    p.log_weight -= error_sq / self.distance_variance
+                predicted_orient = wrap_angle(atan2(lm_y-p.y, lm_x-p.x) - lm_orient)
+                error_sq = ((predicted_orient - sensor_orient)*sensor_dist)**2
+                p.log_weight -= error_sq / self.distance_variance
         return True
 
 class CubeSensorModel(SensorModel):
@@ -509,7 +507,7 @@ class ParticleFilter():
         particles = self.particles
         for i in range(self.num_particles):
             p = particles[i]
-            p.log_weight += wt_inc            
+            p.log_weight += wt_inc
             exp_weights[i] = p.weight = exp(p.log_weight)
         variance = np.var(exp_weights)
         return variance
@@ -733,7 +731,7 @@ class SLAMSensorModel(SensorModel):
     @staticmethod
     def is_aruco(x):
         return isinstance(x, ArucoMarker)
-    
+
     def __init__(self, robot, landmark_test=None, landmarks=None,
                  distance_variance=200):
         if landmarks is None:
@@ -795,7 +793,7 @@ class SLAMSensorModel(SensorModel):
         return wall
 
     def generate_walls_from_markers(self, seen_marker_objects, good_markers):
-        if self.robot.is_moving:
+        if self.robot.status.is_robot_moving:
             return []
         walls = []
         wall_markers = dict()
@@ -820,7 +818,7 @@ class SLAMSensorModel(SensorModel):
         evaluated = False
 
         # Don't evaluate if robot is still moving; ArUco info will be bad.
-        if self.robot.is_moving:
+        if self.robot.status.is_robot_moving:
             return False
 
         # Compute robot motion even if forced, to check for robot origin_id change
@@ -901,7 +899,7 @@ class SLAMSensorModel(SensorModel):
                 del self.candidate_landmarks[id]
 
         return evaluated
-    
+
     def process_landmark(self, id, data, just_looking, seen_marker_objects):
         particles = self.robot.world.particle_filter.particles
         if id.startswith('Aruco-'):

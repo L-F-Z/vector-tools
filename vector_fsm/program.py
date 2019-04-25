@@ -3,12 +3,14 @@ import functools
 import inspect
 import os
 import time
+import logging
 
 import numpy
 import numpy as np
 import cv2
 
 import anki_vector
+from anki_vector.events import Events
 
 from .evbase import EventRouter
 from .base import StateNode
@@ -76,7 +78,7 @@ class StateMachineProgram(StateNode):
             asyncio.ensure_future(cor)
         self.robot.conn.loop.create_task(custom_objs.declare_objects(self.robot))
         time.sleep(0.25)  # need time for custom objects to be transmitted
-        
+
         self.kine_class = kine_class
 
         self.windowName = None
@@ -129,7 +131,7 @@ class StateMachineProgram(StateNode):
 
         # Set up kinematics
         self.robot.kine = self.kine_class(self.robot)
-        self.robot.was_picked_up = False
+        self.robot.status.was_picked_up = False
         self.robot.carrying = None
         self.robot.fetching = None
 
@@ -188,24 +190,30 @@ class StateMachineProgram(StateNode):
 
         # Request camera image and object recognition streams
         self.robot.camera.image_stream_enabled = True
-        self.robot.world.add_event_handler(vector.world.EvtNewCameraImage,
-                                           self.process_image)
+        # self.robot.world.add_event_handler(vector.world.EvtNewCameraImage,
+        #                                    self.process_image)
 
-        self.robot.world.add_event_handler(
-            vector.objects.EvtObjectObserved,
-            self.robot.world.world_map.handle_object_observed)
+        self.robot.events.subscribe(
+            self.robot.world.world_map.handle_object_observed,
+            Events.robot_observed_object
+        )
 
         # Set up cube motion detection
-        cube = self.robot.world.light_cube
+        self.robot.world.connect_cube()
+        cube = self.robot.world.connected_light_cube
+        if cube is None:
+            logging.warning("Light cube was not found")
         cube.movement_start_time = None
 
-        self.robot.world.add_event_handler(
-            vector.objects.EvtObjectMovingStarted,
-            self.robot.world.world_map.handle_object_move_started)
+        self.robot.events.subscribe(
+            self.robot.world.world_map.handle_object_move_started,
+            Events.object_moved
+        )
 
-        self.robot.world.add_event_handler(
-            vector.objects.EvtObjectMovingStopped,
-            self.robot.world.world_map.handle_object_move_stopped)
+        self.robot.events.subscribe(
+            self.robot.world.world_map.handle_object_move_stopped,
+            Events.object_stopped_moving
+        )
 
         # Start speech recognition if requested
         if self.speech:
@@ -229,7 +237,7 @@ class StateMachineProgram(StateNode):
         else:
             for child in node.children.values():
                 self.run_picked_up_handler(child)
-            
+
     def robot_put_down(self):
         print('** Robot was put down.')
         pf = self.robot.world.particle_filter
@@ -251,7 +259,7 @@ class StateMachineProgram(StateNode):
         move_duration_fetch_threshold = 1 # seconds
         cube = self.robot.world.light_cube
         now = None
-        if not self.robot.carrying or not self.robot.carrying.sdk_obj is cube and (cube.movement_start_time is not None and not cube.is_visible):
+        if (not self.robot.carrying or not self.robot.carrying.sdk_obj is cube) and (cube.movement_start_time is not None and not cube.is_visible):
             now = now or time.time()
             if self.robot.fetching and self.robot.fetching.sdk_obj is cube:
                 threshold = move_duration_fetch_threshold
@@ -263,28 +271,28 @@ class StateMachineProgram(StateNode):
                 wcube.pose_confidence = -1
                 cube.movement_start_time = None
                 print('Invalidating pose of', wcube)
-                    
+
         # Update robot kinematic description
         self.robot.kine.get_pose()
 
         # Handle robot being picked up or put down
-        if self.robot.is_picked_up:
+        if self.robot.status.is_picked_up:
             # robot is in the air
-            if self.robot.was_picked_up:
+            if self.robot.status.was_picked_up:
                 pass  # we already knew that
             else:
                 self.picked_up_callback()
         else:  # robot is on the ground
             pf = self.robot.world.particle_filter
             if pf:
-                if self.robot.was_picked_up:
+                if self.robot.status.was_picked_up:
                     self.put_down_handler()
                 else:
                     pf.move()
-        self.robot.was_picked_up = self.robot.is_picked_up
+        self.robot.status.was_picked_up = self.robot.status.is_picked_up
 
         # Handle robot being placed on the charger
-        if self.robot.is_on_charger:
+        if self.robot.status.is_on_charger:
             if not charger_warned:
                 print("\n** On charger. Type robot.drive_off_charger_contacts() to enable motion.")
                 charger_warned = True

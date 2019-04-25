@@ -103,7 +103,7 @@ class LightCubeObj(WorldObject):
     light_cube_size = (44., 44., 44.)
     def __init__(self, sdk_obj, id=None, x=0, y=0, z=0, theta=0):
         if id is None:
-            id = 'Cube-' + str(sdk_obj.cube_id)
+            id = 'Cube-' + str(sdk_obj.object_id)
         super().__init__(id,x,y,z)
         self.sdk_obj = sdk_obj
         if sdk_obj:
@@ -122,9 +122,9 @@ class LightCubeObj(WorldObject):
         if self.pose_confidence >= 0:
             vis = ' visible' if self.is_visible else ''
             return '<LightCubeObj %d: (%.1f, %.1f, %.1f) @ %d deg.%s %s>' % \
-                (self.sdk_obj.cube_id, self.x, self.y, self.z, self.theta*180/pi, vis, self.orientation)
+                (self.sdk_obj.object_id, self.x, self.y, self.z, self.theta*180/pi, vis, self.orientation)
         else:
-            return '<LightCubeObj %d: position unknown>' % self.sdk_obj.cube_id
+            return '<LightCubeObj %d: position unknown>' % self.sdk_obj.object_id
 
 
 class ChargerObj(WorldObject):
@@ -526,9 +526,9 @@ class WorldMap():
         self.update_perched_cameras()
 
     def update_cube(self, cube):
-        cube_id = 'Cube-' + str(cube.cube_id)
+        cube_id = 'Cube-' + str(cube.object_id)
         if cube_id in self.objects:
-            foreign_id = "LightCubeForeignObj-"+str(cube.cube_id)
+            foreign_id = "LightCubeForeignObj-"+str(cube.object_id)
             if foreign_id in self.objects:
                 # remove foreign cube when local cube seen
                 del self.objects[foreign_id]
@@ -804,7 +804,7 @@ class WorldMap():
         if self.robot.fetching and self.robot.fetching.sdk_obj is cube:
             return
         cube.movement_start_time = time.time()
-        cube_id = 'Cube-' + str(cube.cube_id)
+        cube_id = 'Cube-' + str(cube.object_id)
         wmobject = self.robot.world.world_map.objects[cube_id]
         wmobject.pose_confidence = min(0, wmobject.pose_confidence)
 

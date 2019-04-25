@@ -354,7 +354,7 @@ class LookAtObject(StateNode):
     def move_head(self,angle):
         try:
             self.robot.set_head_angle(anki_vector.util.radians(angle), in_parallel=True, num_retries=2)
-        except anki_vector.exceptions.RobotBusy:
+        except anki_vector.exceptions.VectorNotReadyException:
             print("LookAtObject: robot busy; can't move head to",angle)
             pass
 
@@ -760,7 +760,7 @@ class ActionNode(StateNode):
     def launch_or_retry(self):
         try:
             result = self.action_launcher()
-        except anki_vector.exceptions.RobotBusy:
+        except anki_vector.exceptions.VectorNotReadyException:
             if TRACE.trace_level >= TRACE.statenode_startstop:
                 print('TRACE%d:' % TRACE.statenode_startstop, self, 'launch_action raised RobotBusy')
             self.handle = self.robot.conn.loop.call_later(self.relaunch_delay, self.launch_or_retry)
