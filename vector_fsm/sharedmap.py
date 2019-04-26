@@ -161,7 +161,7 @@ class FusionThread(threading.Thread):
                             copy_obj.theta = wrap_angle(v.theta-theta_t)
                             copy_obj.is_foreign = True
                             self.robot.world.world_map.objects[k]=copy_obj
-                    elif isinstance(k,str) and "Cube" in k and not self.robot.world.light_cubes[v.id].is_visible:
+                    elif isinstance(k,str) and "Cube" in k and not self.robot.world.connected_light_cube.is_visible:
                         # update cube
                         if k in self.robot.world.world_map.objects:
                             if self.robot.world.world_map.objects[k].is_foreign:

@@ -511,7 +511,8 @@ class WorldMap():
         object_observed and object_moved events, and just before the
         path planner runs.
         """
-        for (id,cube) in self.robot.world.light_cubes.items():
+        cube = self.robot.world.connected_light_cube
+        if cube is not None:
             self.update_cube(cube)
         if self.robot.world.charger: self.update_charger()
         for face in self.robot.world._faces.values():

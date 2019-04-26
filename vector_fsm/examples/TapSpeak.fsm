@@ -22,8 +22,7 @@ class SayCube(Say):
     """Say the name of a cube."""
     def start(self, event=None, \
               cube_names = ['paperclip', 'anglepoise lamp', 'deli slicer']):
-        cube_number = next(k for k,v in self.robot.world.light_cubes.items() \
-                               if v == event.source)
+        cube_number = event.source.object_id
         self.text = cube_names[cube_number-1]
         super().start(event)
 

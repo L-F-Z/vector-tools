@@ -161,8 +161,8 @@ class ParticleViewer():
             elif id.startswith('Cube-'):
                 label = id[5:]
                 num = int(label)
-                cube = self.robot.world.light_cubes[num]
-                seen = cube.is_visible
+                cube = self.robot.world.connected_light_cube
+                seen = cube.is_visible if cube is not None else False
                 if seen:
                     color = (0.5, 0.3, 1, 0.75)
                 else:

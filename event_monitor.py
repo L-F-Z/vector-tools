@@ -44,7 +44,7 @@ def print_prefix(evt):
 
 def print_object(obj):
     if isinstance(obj,anki_vector.objects.LightCube):
-        cube_id = next(k for k,v in robot.world.light_cubes.items() if v==obj)
+        cube_id = obj.object_id
         print('LightCube-',cube_id,sep='',end='')
     else:
         r = re.search('<(\w*)', obj.__repr__())

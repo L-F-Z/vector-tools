@@ -700,10 +700,10 @@ class DropObject(StateNode):
     class CheckCubeVisible(StateNode):
         def start(self,event=None):
             super().start(event)
-            for cube in self.robot.world.light_cubes.values():
-                if cube and cube.is_visible:
-                    self.post_completion()
-                    return
+            cube = self.robot.world.connected_light_cube
+            if cube and cube.is_visible:
+                self.post_completion()
+                return
             self.post_failure()
 
     $setup {
