@@ -9,7 +9,7 @@ from math import pi
 import cv2
 
 import anki_vector
-from anki_vector.util import distance_mm, speed_mmps, degrees, Distance, Angle
+from anki_vector.util import distance_mm, speed_mmps, degrees, Distance, Angle, Pose
 
 from .base import *
 from .events import *
@@ -735,8 +735,8 @@ class ActionNode(StateNode):
         up self.action_kwargs"""
         self.abort_on_stop = abort_on_stop
         super().__init__()
-        if 'in_parallel' not in self.action_kwargs:
-            self.action_kwargs['in_parallel'] = True
+        # if 'in_parallel' not in self.action_kwargs:
+        #     self.action_kwargs['in_parallel'] = True
         if 'num_retries' not in self.action_kwargs:
             self.action_kwargs['num_retries'] = 2
         self.anki_vector_action_handle = None
@@ -754,14 +754,15 @@ class ActionNode(StateNode):
                 print('TRACE%d:' % TRACE.statenode_startstop, self, 'launch_action raised RobotBusy')
             self.handle = self.robot.conn.loop.call_later(self.relaunch_delay, self.launch_or_retry)
             return
-        if isinstance(result, str):
+        if str(result) == '':
             self.anki_vector_action_handle = result
-        elif result is None: # Aborted
+        else: # Aborted
             return
-        else:
-            raise ValueError("Result of %s launch_action() is %s, not a anki_vector.action.Action." %
-                             (self,result))
-        self.post_when_complete()
+        # else:
+        #     raise ValueError("Result of %s launch_action() is %s, not a anki_vector.action.Action." %
+        #                      (self,result))
+        self.post_completion()
+        # self.post_when_complete()
 
     def action_launcher(self):
         raise Exception('%s lacks an action_launcher() method' % self)
@@ -834,7 +835,8 @@ class Say(ActionNode):
         print("Speaking: '",utterance,"'",sep='')
 
     def action_launcher(self):
-        return self.robot.say_text(self.utterance, **self.action_kwargs)
+        resp = self.robot.say_text(self.utterance, **self.action_kwargs)
+        return '' if str(resp.state) == '4' else 'ERROR'
 
 
 class Forward(ActionNode):
@@ -864,8 +866,9 @@ class Forward(ActionNode):
         super().start(event)
 
     def action_launcher(self):
-        return self.robot.behavior.drive_straight(self.distance, self.speed,
+        resp = self.robot.behavior.drive_straight(self.distance, self.speed,
                                          **self.action_kwargs)
+        return str(resp.result)
 
 
 class Turn(ActionNode):
@@ -891,7 +894,30 @@ class Turn(ActionNode):
         if self.angle is None:
             return None
         else:
-            return self.robot.bnehavior.turn_in_place(self.angle, **self.action_kwargs)
+            resp = self.robot.behavior.turn_in_place(self.angle, **self.action_kwargs)
+            return str(resp.result)
+
+class GoToRelativePosition(ActionNode):
+    "Uses SDK's go_to_pose method."
+    def __init__(self, x, y, angle, abort_on_stop=True, **action_kwargs):
+        self.pose = Pose(x=x, y=y, z=0, angle_z=Angle(degrees=angle))
+        self.action_kwargs = action_kwargs
+        super().__init__(abort_on_stop)
+
+    def action_launcher(self):
+        resp = self.robot.behavior.go_to_pose(self.pose, relative_to_robot=True, **self.action_kwargs)
+        return '' if resp is not None else 'ERROR'
+
+class GoToPosition(ActionNode):
+    "Uses SDK's go_to_pose method."
+    def __init__(self, x, y, angle, abort_on_stop=True, **action_kwargs):
+        self.pose = Pose(x=x, y=y, z=0, angle_z=Angle(degrees=angle))
+        self.action_kwargs = action_kwargs
+        super().__init__(abort_on_stop)
+
+    def action_launcher(self):
+        resp = self.robot.behavior.go_to_pose(self.pose, **self.action_kwargs)
+        return '' if resp is not None else 'ERROR'
 
 class GoToPose(ActionNode):
     "Uses SDK's go_to_pose method."
@@ -901,7 +927,8 @@ class GoToPose(ActionNode):
         super().__init__(abort_on_stop)
 
     def action_launcher(self):
-        return self.robot.behavior.go_to_pose(self.pose, **self.action_kwargs)
+        resp = self.robot.behavior.go_to_pose(self.pose, **self.action_kwargs)
+        return '' if resp is not None else 'ERROR'
 
 class SetHeadAngle(ActionNode):
     def __init__(self, angle=degrees(0), abort_on_stop=True, **action_kwargs):
@@ -920,7 +947,8 @@ class SetHeadAngle(ActionNode):
         super().start(event)
 
     def action_launcher(self):
-        return self.robot.behavior.set_head_angle(self.angle, **self.action_kwargs)
+        resp = self.robot.behavior.set_head_angle(self.angle, **self.action_kwargs)
+        return '' if resp is not None else 'ERROR'
 
 class SetLiftHeight(ActionNode):
     def __init__(self, height=0, abort_on_stop=True, **action_kwargs):
@@ -933,7 +961,8 @@ class SetLiftHeight(ActionNode):
         # Temporary hack supplied by Mark Wesley at Anki
         msg = anki_vector._clad._clad_to_engine_iface.EnableLiftPower(True)
         self.robot.conn.send_msg(msg)
-        return self.robot.behavior.set_lift_height(self.height, **self.action_kwargs)
+        resp = self.robot.behavior.set_lift_height(self.height, **self.action_kwargs)
+        return '' if resp is not None else 'ERROR'
 
 class SetLiftAngle(SetLiftHeight):
     def __init__(self, angle, abort_on_stop=True, **action_kwargs):
@@ -972,8 +1001,9 @@ class DockWithCube(ActionNode):
         super().start(event)
 
     def action_launcher(self):
-        if self.object is None:
-            raise ValueError('No cube to dock with')
+        if self.robot.world.connected_light_cube is None:
+            print("Light cube is not currently connected. Try 'robot.world.connect_cube()' (no guarantees this will work)")
+            return 'ERROR'
         return self.robot.behavior.dock_with_cube(self.object, **self.action_kwargs)
 
 

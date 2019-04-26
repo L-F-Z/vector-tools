@@ -27,6 +27,7 @@ from . import opengl
 from . import custom_objs
 from .perched import *
 from .sharedmap import *
+from .nodes import stopAllMotors
 
 running_fsm = None
 charger_warned = False
@@ -226,7 +227,7 @@ class StateMachineProgram(StateNode):
 
     def robot_picked_up(self):
         print('** Robot was picked up!')
-        self.robot.stop_all_motors()
+        stopAllMotors(self.robot)
         self.robot.world.world_map.invalidate_poses()
         self.run_picked_up_handler(self)
 
@@ -301,7 +302,7 @@ class StateMachineProgram(StateNode):
         # Handle robot being placed on the charger
         if self.robot.status.is_on_charger:
             if not charger_warned:
-                print("\n** On charger. Type robot.drive_off_charger_contacts() to enable motion.")
+                print("\n** On charger. Type robot.behavior.drive_off_charger() to enable motion.")
                 charger_warned = True
         else:
             charger_warned = False

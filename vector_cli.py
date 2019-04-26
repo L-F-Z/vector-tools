@@ -33,6 +33,7 @@ from event_monitor import monitor, unmonitor
 import vector_fsm
 from vector_fsm import *
 from vector_fsm.worldmap import ArucoMarkerObj, CustomMarkerObj, WallObj
+from vector_fsm.nodes import stopAllMotors
 
 histfile = '.pythonhistory'
 
@@ -434,7 +435,13 @@ def cli_loop(robot):
     running_fsm.start()
 
     cli_loop._console = code.InteractiveConsole()
+    cli_loop.battery_warned = False
     while True:
+        if not cli_loop.battery_warned and robot.get_battery_state().battery_level == 1:
+            cli_loop.battery_warned = True
+            print("\n** Low battery. Type robot.behavior.drive_on_charger() to recharge.")
+        elif cli_loop.battery_warned and robot.get_battery_state().battery_level == 2:
+            cli_loop.battery_warned = False
         if RUNNING == False:
             return
         cli_loop._line = ''
@@ -516,7 +523,7 @@ def cli_loop(robot):
 def main():
     global robot
     args = anki_vector.util.parse_command_args()
-    with anki_vector.Robot(args.serial, enable_camera_feed=True) as robot:
+    with anki_vector.Robot(args.serial, enable_camera_feed=True, show_viewer=False) as robot:
         try:
             robot.erouter = vector_fsm.evbase.EventRouter()
             robot.erouter.robot = robot
@@ -528,7 +535,8 @@ def main():
 
 
 def process_interrupt():
-    robot.stop_all_motors()
+    global robot
+    stopAllMotors(robot)
     running_fsm = vector_fsm.program.running_fsm
     if running_fsm and running_fsm.running:
         print('\nKeyboardInterrupt: stopping', running_fsm.name)
