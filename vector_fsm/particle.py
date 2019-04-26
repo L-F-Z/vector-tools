@@ -840,10 +840,10 @@ class SLAMSensorModel(SensorModel):
             self.last_evaluate_pose = self.robot.pose
 
         # Evaluate any cube landmarks (but we don't normally use cubes as landmarks)
-        for cube in self.robot.world.light_cubes.values():
-            if self.landmark_test(cube):
-                id = 'Cube-'+str(cube.cube_id)
-                evaluated = self.process_landmark(id, cube, just_looking, []) or evaluated
+        cube = self.robot.world.connected_light_cube
+        if self.landmark_test(cube):
+            id = 'Cube-'+str(cube.cube_id)
+            evaluated = self.process_landmark(id, cube, just_looking, []) or evaluated
 
         # Evaluate ArUco landmarks
         try:
