@@ -40,6 +40,70 @@ histfile = '.pythonhistory'
 RUNNING = False
 
 robot = None
+def runfsm(module_name, running_modules=dict()):
+    """runfsm('modname') reloads that module and expects it to contain
+    a class of the same name. It calls that class's constructor and then
+    calls the instance's start() method."""
+
+    global running_fsm
+    running_fsm = vector_fsm.program.running_fsm
+    if running_fsm:
+        stopAllMotors(robot)
+        running_fsm.stop()
+
+    r_py = re.compile('.*\.py$')
+    if r_py.match(module_name):
+        print("\n'%s' is not a module name. Trying '%s' instead.\n" %
+              (module_name, module_name[0:-3]))
+        module_name = module_name[0:-3]
+
+    found = False
+    try:
+        reload(running_modules[module_name])
+        found = True
+    except KeyError: pass
+    except: raise
+    if not found:
+        try:
+            running_modules[module_name] = __import__(module_name)
+        except ImportError as e:
+            print("Error loading %s: %s.  Check your search path.\n" %
+                  (module_name,e))
+            return
+        except Exception as e:
+            print('\n===> Error loading %s:' % module_name)
+            raise
+
+    py_filepath = running_modules[module_name].__file__
+    fsm_filepath = py_filepath[0:-2] + 'fsm'
+    try:
+        py_time = datetime.datetime.fromtimestamp(os.path.getmtime(py_filepath))
+        fsm_time = datetime.datetime.fromtimestamp(os.path.getmtime(fsm_filepath))
+        if py_time < fsm_time:
+            cprint('Warning: %s.py is older than %s.fsm. Should you run genfsm?' %
+                   (module_name,module_name), color="yellow")
+    except: pass
+
+    # The parent node class's constructor must match the module name.
+    the_module = running_modules[module_name]
+    the_class = the_module.__getattribute__(module_name) \
+                if module_name in dir(the_module) else None
+    if not isinstance(the_class,type) or not issubclass(the_class,StateNode):
+        cprint("Module %s does not contain a StateNode class named %s.\n" %
+              (module_name, module_name), color="red")
+        return       
+    the_module.robot = robot
+    the_module.world = robot.world
+    the_module.charger = robot.world.charger
+    the_module.cube = robot.world.connected_light_cube
+
+    # Class's __init__ method will call setup, which can reference the above variables.
+    running_fsm = vector_fsm.program.running_fsm = the_class()
+    running_fsm.simple_cli_callback = simple_cli_callback
+    cli_globals = globals()
+    cli_globals['running_fsm'] = running_fsm
+    robot.conn.loop.call_soon(running_fsm.start)
+    return running_fsm
 
 def setup_robot(robot):
     ConfigTuple = namedtuple('ConfigTuple', ['x', 'y'])

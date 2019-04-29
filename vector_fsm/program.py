@@ -201,11 +201,13 @@ class StateMachineProgram(StateNode):
 
         # Set up cube motion detection
         self.robot.world.connect_cube()
+        self.robot.world.cube_is_valid = False
         cube = self.robot.world.connected_light_cube
         if cube is None:
             logging.warning("Light cube was not found")
         else:
             cube.movement_start_time = None
+            self.robot.world.cube_is_valid = True
 
         self.robot.events.subscribe(
             self.robot.world.world_map.handle_object_move_started,
@@ -267,7 +269,7 @@ class StateMachineProgram(StateNode):
         cube = self.robot.world.light_cube
         now = None
         # cube = self.connectToCube()
-        if (not self.robot.carrying or not self.robot.carrying.sdk_obj is cube) and cube is not None and cube.movement_start_time is not None and not cube.is_visible:
+        if (not self.robot.carrying or not self.robot.carrying.sdk_obj is cube) and self.robot.world.cube_is_valid and cube is not None and cube.movement_start_time is not None and not cube.is_visible:
             now = now or time.time()
             if self.robot.fetching and self.robot.fetching.sdk_obj is cube:
                 threshold = move_duration_fetch_threshold

@@ -4,6 +4,7 @@ import time
 from anki_vector.faces import Face
 from anki_vector.objects import LightCube, CustomObject
 from anki_vector.util import Pose
+from anki_vector.events import Events
 
 from . import evbase
 from . import transform
@@ -526,22 +527,25 @@ class WorldMap():
         self.update_doorways()
         self.update_perched_cameras()
 
-    def update_cube(self, cube):
-        cube_id = 'Cube-' + str(cube.object_id)
+    def update_cube(self, evt):
+        cube_id = 'Cube-' + str(evt.object_id)
+        cube = self.robot.world.connected_light_cube
         if cube_id in self.objects:
-            foreign_id = "LightCubeForeignObj-"+str(cube.object_id)
+            foreign_id = "LightCubeForeignObj-"+str(evt.object_id)
             if foreign_id in self.objects:
                 # remove foreign cube when local cube seen
                 del self.objects[foreign_id]
             wmobject = self.objects[cube_id]
+            if cube is None:
+                return None
             wmobject.sdk_obj = cube  # In case created before seen
             if self.robot.carrying is wmobject:
                 if cube.is_visible: # we thought we were carrying it, but we're wrong
                     self.robot.carrying = None
-                    return self.update_cube(cube)
+                    return None #self.update_cube(cube)
                 else:  # we do appear to be carrying it
                     self.update_carried_object(wmobject)
-        elif cube.pose is None:  # not in contact with cube
+        elif cube is None or cube.pose is None:  # not in contact with cube
             return None
         else:
             # Cube is not in the worldmap, so add it.
@@ -789,14 +793,16 @@ class WorldMap():
 
 #================ Event Handlers ================
 
-    def handle_object_observed(self, evt, **kwargs):
-        if isinstance(evt.obj, LightCube):
-            # print('observed: ',evt.obj)
-            self.update_cube(evt.obj)
-        elif isinstance(evt.obj, CustomObject):
-            self.update_custom_object(evt.obj)
-        elif isinstance(evt.obj, Face):
-            self.update_face(evt.obj)
+    def handle_object_observed(self, evt_type, evt, **kwargs):
+        if evt_type == Events.robot_observed_object:
+            if str(evt.object_family) == "LIGHT_CUBE":
+                update_cube(evt)
+            else:
+                return
+        # elif isinstance(evt.obj, CustomObject):
+        #     self.update_custom_object(evt.obj)
+        # elif isinstance(evt.obj, Face):
+        #     self.update_face(evt.obj)
 
     def handle_object_move_started(self, evt, **kwargs):
         cube = evt.obj

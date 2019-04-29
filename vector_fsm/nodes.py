@@ -747,21 +747,23 @@ class ActionNode(StateNode):
         self.launch_or_retry()
 
     def launch_or_retry(self):
-        try:
-            result = self.action_launcher()
-        except anki_vector.exceptions.VectorNotReadyException:
-            if TRACE.trace_level >= TRACE.statenode_startstop:
-                print('TRACE%d:' % TRACE.statenode_startstop, self, 'launch_action raised RobotBusy')
-            self.handle = self.robot.conn.loop.call_later(self.relaunch_delay, self.launch_or_retry)
-            return
+        result = self.action_launcher()
+        # try:
+        #     result = self.action_launcher()
+        # except anki_vector.exceptions.VectorNotReadyException:
+        #     if TRACE.trace_level >= TRACE.statenode_startstop:
+        #         print('TRACE%d:' % TRACE.statenode_startstop, self, 'launch_action raised RobotBusy')
+        #     self.handle = self.robot.conn.loop.call_later(self.relaunch_delay, self.launch_or_retry)
+        #     return
         if str(result) == '':
             self.anki_vector_action_handle = result
         else: # Aborted
+            print("result is not empty string: {}".format(result))
             return
         # else:
         #     raise ValueError("Result of %s launch_action() is %s, not a anki_vector.action.Action." %
         #                      (self,result))
-        self.post_completion()
+        # self.post_completion()
         # self.post_when_complete()
 
     def action_launcher(self):
@@ -836,6 +838,8 @@ class Say(ActionNode):
 
     def action_launcher(self):
         resp = self.robot.say_text(self.utterance, **self.action_kwargs)
+        print("Say node completed")
+        self.post_completion()
         return '' if str(resp.state) == '4' else 'ERROR'
 
 
@@ -868,6 +872,8 @@ class Forward(ActionNode):
     def action_launcher(self):
         resp = self.robot.behavior.drive_straight(self.distance, self.speed,
                                          **self.action_kwargs)
+        print("Forward node completed")
+        self.post_completion()
         return str(resp.result)
 
 
@@ -892,9 +898,12 @@ class Turn(ActionNode):
 
     def action_launcher(self):
         if self.angle is None:
+            self.post_failure()
             return None
         else:
             resp = self.robot.behavior.turn_in_place(self.angle, **self.action_kwargs)
+            print("Turn node completed")
+            self.post_completion()
             return str(resp.result)
 
 class GoToRelativePosition(ActionNode):
