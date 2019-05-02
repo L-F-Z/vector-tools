@@ -224,7 +224,7 @@ class TimeTransition(Transition):
     def __call__(self, robot, future):
         print("Calling time transition")
         for dest_node in self.destinations:
-            self.robot.conn.loop.call_later(self.duration, self.startNode, dest_node)
+            robot.conn.loop.call_later(self.duration, self.startNode, dest_node)
 
 
 
@@ -246,7 +246,7 @@ def main():
         complete2 = CompletionTransition().add_sources(turn).add_destinations(backward, speak)
         complete3 = CompletionTransition().add_sources(speak).add_destinations(takepic)
         dataTrans = DataTransition().add_sources(takepic).add_destinations(displaypic)
-        timeTrans = CompletionTransition().add_sources(displaypic).add_destinations(speak2)
+        timeTrans = TimeTransition(10).add_sources(displaypic).add_destinations(speak2)
         failureTrans = FailureTransition().add_sources(forward, turn, backward, speak, takepic, speak2).add_destinations(declare_failure)
         forward.start()
 
@@ -257,3 +257,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
