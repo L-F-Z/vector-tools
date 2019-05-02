@@ -32,6 +32,7 @@ class ActionNode(object):
         self.completed = False
         self.failed = False
         self.succeeded = False
+        self.data = None
 
     def add_transition(self, transition):
         if self.action:
@@ -42,6 +43,9 @@ class ActionNode(object):
     def start(self, data=None):
         for act in self.awaiting_actions:
             self.action.add_done_callback(act)
+        # need some changes here, we should directly call those transitions.
+
+
         # try:
         #     print("checking status")
         #     if self.action.result():
@@ -116,12 +120,14 @@ class DisplayImageOnMonitor(ActionNode):
         super().__init__(robot)
     # AttributeError: 'NoneType' object has no attribute 'add_done_callback'
     # we dont have self.action here.
-    def start(self, data=None):
-        if data is None:
+    def start(self):
+        if self.data is None:
             print("No data to show")
         else:
-            image_data = data.image
-            Image.open(io.BytesIO(image_data))
+            image_data = self.data.raw_image
+            image_data.show()
+        self.action = self.robot.behavior.drive_straight(distance_mm(0), speed_mmps(100))
+            # Image.open(io.BytesIO(image_data))
         super().start()
 
 class Transition(object):
@@ -204,6 +210,7 @@ class DataTransition(Transition):
             if self.target_data is None or source_node.data == self.target_data:
                 print("Check Passed")
                 for dest_node in self.destinations:
+                    dest_node.data = future.result()
                     print("firing up next node")
                     dest_node.start()
 
@@ -219,7 +226,7 @@ class TimeTransition(Transition):
     def __call__(self, future):
         print("Calling time transition")
         for dest_node in self.destinations:
-            robot.conn.loop.call_later(self.duration, self.startNode, dest_node)
+            self.robot.conn.loop.call_later(self.duration, self.startNode, dest_node)
 
 
 
@@ -241,7 +248,7 @@ def main():
         complete2 = CompletionTransition().add_sources(turn).add_destinations(backward, speak)
         complete3 = CompletionTransition().add_sources(speak).add_destinations(takepic)
         dataTrans = DataTransition().add_sources(takepic).add_destinations(displaypic)
-        timeTrans = TimeTransition(10).add_sources(displaypic).add_destinations(speak2)
+        timeTrans = CompletionTransition().add_sources(displaypic).add_destinations(speak2)
         failureTrans = FailureTransition().add_sources(forward, turn, backward, speak, takepic, speak2).add_destinations(declare_failure)
         forward.start()
 
