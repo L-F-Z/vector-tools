@@ -33,6 +33,8 @@ class ActionNode(object):
         self.failed = False
         self.succeeded = False
         self.data = None
+        self.name = ""
+        self.parent = None
 
     def add_transition(self, transition):
         trans_func = functools.partial(transition, self.robot)
@@ -40,6 +42,12 @@ class ActionNode(object):
             self.action.add_done_callback(trans_func)
         else:
             self.awaiting_actions.append(trans_func)
+
+    def set_name(self, name):
+        self.name = name
+
+    def set_parent(self, node):
+        self.parent = node
 
     def start(self, data=None):
         for act in self.awaiting_actions:
@@ -135,7 +143,10 @@ class Transition(object):
     def __init__(self):
         self.sources = []
         self.destinations = []
-        pass
+        self.name = ""
+
+    def set_name(self, name):
+        self.name = name
 
     def add_sources(self, *sources):
         self.sources.extend(sources)
