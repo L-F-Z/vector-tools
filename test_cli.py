@@ -224,7 +224,7 @@ class TimeTransition(Transition):
     def __call__(self, robot, future):
         print("Calling time transition")
         for dest_node in self.destinations:
-            self.robot.conn.loop.call_later(self.duration, self.startNode, dest_node)
+            robot.conn.loop.call_later(self.duration, self.startNode, dest_node)
 
 
 
