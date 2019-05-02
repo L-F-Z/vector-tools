@@ -108,13 +108,14 @@ class TakePicture(ActionNode):
 
     def start(self):
         self.action = self.robot.camera.capture_single_image()
-        self.action.data = self.action.result().raw_image
+        # self.action.data = self.action.result().raw_image
         super().start()
 
 class DisplayImageOnMonitor(ActionNode):
     def __init__(self, robot):
         super().__init__(robot)
-
+    # AttributeError: 'NoneType' object has no attribute 'add_done_callback'
+    # we dont have self.action here.
     def start(self, data=None):
         if data is None:
             print("No data to show")
@@ -201,7 +202,9 @@ class DataTransition(Transition):
         print("Calling data transition")
         for source_node in self.sources:
             if self.target_data is None or source_node.data == self.target_data:
+                print("Check Passed")
                 for dest_node in self.destinations:
+                    print("firing up next node")
                     dest_node.start()
 
 class TimeTransition(Transition):
@@ -229,7 +232,7 @@ def main():
         forward = Forward(robot)
         turn = Turn(robot)
         backward = Forward(robot, -50)
-        speak = Say(robot, "Hi Aravind")
+        speak = Say(robot, "Hi There")
         takepic = TakePicture(robot)
         speak2 = Say(robot, "All done")
         declare_failure = Say(robot, "I have failed but I am still the best")

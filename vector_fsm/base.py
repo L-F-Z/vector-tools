@@ -4,6 +4,7 @@
     Their parent class EventListener is imported from evbase.py.
 
 """
+import time
 
 import anki_vector
 
@@ -132,7 +133,8 @@ class StateNode(EventListener):
         # 'program' is inserted into this module by __init__ to avoid circular importing
         program.running_fsm.children = dict()
         program.running_fsm.children[self.name] = self
-        self.robot.conn.loop.call_soon(self.start)
+        self.start()
+        # self.robot.conn.loop.call_soon(self.start)
         return self
 
 
@@ -216,11 +218,14 @@ class Transition(EventListener):
             src.stop()
         self.stop()
         action_cancel_delay = 0.01  # wait for source node action cancellations to take effect
-        self.handle = self.robot.conn.loop.call_later(action_cancel_delay, self.fire2, event)
+        time.sleep(action_cancel_delay)
+        self.fire2(event)
+        print("Fired transition with event {}".format(event))
+        # self.handle = self.robot.conn.loop.call_later(action_cancel_delay, self.fire2, event)
 
     def fire2(self,event):
-        if not self.handle:
-            print('@ @ @ @ @ HANDLE GONE: I SHOULD BE DEAD', self, event)
+        # if not self.handle:
+        #     print('@ @ @ @ @ HANDLE GONE: I SHOULD BE DEAD', self, event)
         for dest in self.destinations:
             if TRACE.trace_level >= TRACE.transition_fire:
                 print('TRACE%d: ' % TRACE.transition_fire, self, 'starting', dest)

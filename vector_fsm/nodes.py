@@ -833,14 +833,17 @@ class Say(ActionNode):
         if not isinstance(utterance, str):
             utterance = repr(utterance)
         self.utterance = utterance
-        super().start(event)
         print("Speaking: '",utterance,"'",sep='')
+        super().start(event)
 
     def action_launcher(self):
+        if 'num_retries' in self.action_kwargs:
+            num_retries = self.action_kwargs.pop('num_retries')
         resp = self.robot.say_text(self.utterance, **self.action_kwargs)
         print("Say node completed")
+        self.action_kwargs['num_retries'] = num_retries
         self.post_completion()
-        return '' if str(resp.state) == '4' else 'ERROR'
+        return '' #if str(resp.state) == '4' else 'ERROR'
 
 
 class Forward(ActionNode):
@@ -872,6 +875,8 @@ class Forward(ActionNode):
     def action_launcher(self):
         resp = self.robot.behavior.drive_straight(self.distance, self.speed,
                                          **self.action_kwargs)
+        print("resp-{}".format(resp))
+        print("action_kwargs-{}".format(self.action_kwargs))
         print("Forward node completed")
         self.post_completion()
         return str(resp.result)

@@ -2,5 +2,5 @@ from vector_fsm import *
 
 class SimpleMotion(StateMachineProgram):
     $setup{
-        Forward(50) =C=> Turn(30) =C=> Say('done')
+        Forward(50)=C=>Turn(30)=C=>Say("Save Anki!")
     }
