@@ -1,6 +1,8 @@
-from vector_fsm import *
+from NewFSM.NewFSM import *
 
 class SimpleMotion(StateMachineProgram):
     $setup{
-        Forward(50)=C=>Turn(30)=C=>Say("Save Anki!")
+        Forward(50)=C=>Turn(30)=C=>{driver, speaker}
+        driver : Forward(-50)=T(10)=>Say("All Done")=C=>TakePicture()=D=>DisplayImageOnMonitor()
+        speaker : Say("Save Anki!")
     }

@@ -1,317 +1,277 @@
 #!/usr/bin/env python3
 
-# Copyright (c) 2018 Anki, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License in the file LICENSE.txt or at
-#
-#     https://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
-"""Hello World
-
-Make Vector say 'Hello World' in this simple Vector SDK example program.
+"""
+Aravind and Fengzhi's 15-694 Final Project: Make Vector Great Again
 """
 
 import anki_vector
 from anki_vector import *
 from anki_vector.util import *
-import subprocess, shlex, functools, time, concurrent.futures
+import subprocess
+import shlex
+import functools
+import time
+import readline
+import sys, os
+import atexit
+import code
+import datetime
+import logging
+import platform
+import re
+import traceback
+from collections import namedtuple
+from importlib import __import__, reload
+import concurrent.futures
+import pdb
+from pdb import break_on_setattr
+from NewFSM import NewFSM
+from NewFSM.NewFSM import *
 
-class ActionNode(object):
-    def __init__(self, robot):
-        self.robot = robot
-        self.awaiting_actions = []
-        self.action = None
-        self.completed = False
-        self.failed = False
-        self.succeeded = False
-        self.data = None
-        self.name = ""
-        self.parent = None
-
-    def add_transition(self, transition):
-        trans_func = functools.partial(transition, self.robot)
-        if self.action:
-            self.action.add_done_callback(trans_func)
-        else:
-            self.awaiting_actions.append(trans_func)
-
-    def set_name(self, name):
-        self.name = name
-
-    def set_parent(self, node):
-        self.parent = node
-
-    def start(self, data=None):
-        for act in self.awaiting_actions:
-            self.action.add_done_callback(act)
-        # need some changes here, we should directly call those transitions.
+# robot = None
+RUNNING = False
+histfile = None
+running_fsm = None
 
 
-        # try:
-        #     print("checking status")
-        #     if self.action.result():
-        #         print("    Got result")
-        #         self.post_success()
-        #     else:
-        #         print("result: {}".format(self.action))
-        # except:
-        #     print("Failed")
-        #     self.post_failure()
+"""
+FSM STUFF
+"""
 
-        # self.post_completion()
+def setup():
+    global RUNNING, histfile
+    robot = NewFSM.robot
+    # tab completion
+    readline.parse_and_bind('tab: complete')
+    # history file
+    if 'HOME' in os.environ:  # Linux
+        histfile = os.path.join(os.environ['HOME'], '.pythonhistory')
+    elif 'USERPROFILE' in os.environ:  # Windows
+        histfile = os.path.join(os.environ['USERPROFILE'], '.pythonhistory')
+    else:
+        histfile = '.pythonhistory'
 
-    def result(self):
-        if self.action:
-            return self.action.result()
-        else:
-            return None
+    try:
+        readline.read_history_file(histfile)
+    except IOError:
+        pass
+    atexit.register(readline.write_history_file, histfile)
 
-    def post_completion(self):
-        self.completed = True
+    # del platform
 
-    def post_success(self):
-        self.completed = True
-        self.succeeded = True
-        self.failed = False
+    # Put current directory on search path.
+    if '.' not in sys.path:
+        sys.path.append('.')
 
-    def post_failure(self):
-        self.completed = True
-        self.succeeded = False
-        self.failed = True
+    res = 0
+    ans = None
 
-class Forward(ActionNode):
-    def __init__(self, robot, distance=50, speed=50):
-        super().__init__(robot)
-        self.distance = distance_mm(distance)
-        self.speed = speed_mmps(speed)
-        
-    def start(self):
-        self.action = self.robot.behavior.drive_straight(self.distance, self.speed)
-        super().start()
+    RUNNING = True
 
-class Turn(ActionNode):
-    def __init__(self, robot, angle=45):
-        super().__init__(robot)
-        self.theta = degrees(angle)
+def runfsm(module_name, running_modules=dict()):
+    """runfsm('modname') reloads that module and expects it to contain
+    a class of the same name. It calls that class's constructor and then
+    calls the instance's start() method."""
 
-    def start(self):
-        self.action = self.robot.behavior.turn_in_place(self.theta)
-        super().start()
+    global running_fsm
+    robot = NewFSM.robot
+    if running_fsm:
+        stopAllMotors()
+        running_fsm.stop()
 
-class SetHeadAngle(ActionNode):
-    def __init__(self, robot, angle=0):
-        super().__init__(robot)
-        self.angle = degrees(angle)
+    r_py = re.compile('.*\.py$')
+    if r_py.match(module_name):
+        print("\n'%s' is not a module name. Trying '%s' instead.\n" %
+              (module_name, module_name[0:-3]))
+        module_name = module_name[0:-3]
 
-    def start(self):
-        self.action = self.robot.behavior.set_head_angle(self.angle)
-        super().start()
-
-class SetLiftHeight(ActionNode):
-    def __init__(self, robot, height=0):
-        super().__init__(robot)
-        self.height = height
-
-    def start(self):
-        self.action = self.robot.behavior.set_lift_height(self.height)
-        super().start()
-
-class Say(ActionNode):
-    def __init__(self, robot, text):
-        super().__init__(robot)
-        self.text = text
-
-    def start(self):
-        self.action = self.robot.behavior.say_text(self.text)
-        super().start()
-
-class TakePicture(ActionNode):
-    def __init__(self, robot):
-        super().__init__(robot)
-
-    def start(self):
-        self.action = self.robot.camera.capture_single_image()
-        # self.action.data = self.action.result().raw_image
-        super().start()
-
-class DisplayImageOnMonitor(ActionNode):
-    def __init__(self, robot):
-        super().__init__(robot)
-    # AttributeError: 'NoneType' object has no attribute 'add_done_callback'
-    # we dont have self.action here.
-    def start(self):
-        if self.data is None:
-            print("No data to show")
-        else:
-            image_data = self.data.raw_image
-            image_data.show()
-        self.action = self.robot.behavior.drive_straight(distance_mm(0), speed_mmps(100))
-            # Image.open(io.BytesIO(image_data))
-        super().start()
-
-class DisplayImageOnScreen(ActionNode):
-    def __init__(self, robot, duration=1):
-        super().__init__(robot)
-        self.duration = duration
-
-    def start(self):
-        if self.data is None:
-            print("No data to show")
-        else:
-            image_data = self.data.raw_image.resize((184,96))
-            screen_data = anki_vector.screen.convert_image_to_screen_data(image_data)
-            self.action = self.robot.screen.set_screen_with_image_data(screen_data, self.duration)
-            super().start()
-
-class MirrorMode(ActionNode):
-    def __init__(self, robot, enable=True):
-        super().__init__(robot)
-        self.enable = enable
-
-    def start(self):
-        self.action = self.robot.vision.enable_display_camera_feed_on_face(self.enable)
-        super().start()
-
-class Transition(object):
-    def __init__(self):
-        self.sources = []
-        self.destinations = []
-        self.name = ""
-
-    def set_name(self, name):
-        self.name = name
-
-    def add_sources(self, *sources):
-        self.sources.extend(sources)
-        for source_node in self.sources:
-            source_node.add_transition(self)
-        return self
-
-    def add_destinations(self, *dests):
-        self.destinations.extend(dests)
-        return self
-
-class CompletionTransition(Transition):
-    def __init__(self):
-        super().__init__()
-        self.transition_type = "Completion"
-
-    def __call__(self, robot, future):
+    found = False
+    try:
+        reload(running_modules[module_name])
+        found = True
+    except KeyError: pass
+    except: raise
+    if not found:
         try:
-            if future.result():
-                for dest_node in self.destinations:
-                    dest_node.start()
-                # for source_node in self.sources:
-                #     if source_node.completed:
-                #         for dest_node in self.destinations:
-                #             dest_node.start()
-        except:
-            pass
+            running_modules[module_name] = __import__(module_name)
+        except ImportError as e:
+            print("Error loading %s: %s.  Check your search path.\n" %
+                  (module_name,e))
+            return
+        except Exception as e:
+            print('\n===> Error loading %s:' % module_name)
+            raise
 
-class SuccessTransition(Transition):
-    def __init__(self):
-        super().__init__()
-        self.transition_type = "Success"
+    py_filepath = running_modules[module_name].__file__
+    fsm_filepath = py_filepath[0:-2] + 'fsm'
+    try:
+        py_time = datetime.datetime.fromtimestamp(os.path.getmtime(py_filepath))
+        fsm_time = datetime.datetime.fromtimestamp(os.path.getmtime(fsm_filepath))
+        if py_time < fsm_time:
+            cprint('Warning: %s.py is older than %s.fsm. Should you run genfsm?' %
+                   (module_name,module_name), color="yellow")
+    except: pass
 
-    def __call__(self, robot, future):
+    # The parent node class's constructor must match the module name.
+    the_module = running_modules[module_name]
+    the_class = the_module.__getattribute__(module_name) \
+                if module_name in dir(the_module) else None
+    # if not isinstance(the_class,type) or not issubclass(the_class,StateNode):
+    #     cprint("Module %s does not contain a StateNode class named %s.\n" %
+    #           (module_name, module_name), color="red")
+    #     return       
+    # print("StateMachineProgram robot in runfsm: {}".format(StateMachineProgram.robot))
+    running_fsm = the_class()
+    the_module.robot = robot
+    the_module.world = the_module.robot.world
+    the_module.charger = the_module.robot.world.charger
+    the_module.cube = the_module.robot.world.connected_light_cube
+    # StateMachineProgram.robot = robot
+    # Class's __init__ method will call setup, which can reference the above variables.
+    running_fsm.robot = robot
+    cli_globals = globals()
+    cli_globals['running_fsm'] = running_fsm
+    robot.conn.loop.call_soon(running_fsm.start)
+    return running_fsm   
+
+def cli_loop():
+    global RUNNING, histfile, ans, running_fsm
+    robot = NewFSM.robot
+    cli_globals = globals()
+    cli_globals['world'] = robot.world
+    cli_globals['light_cube'] = world.light_cube
+    cli_globals['charger'] = robot.world.charger
+    cli_globals['ans'] = None
+
+    cli_globals['running_fsm'] = running_fsm
+    # running_fsm.start()
+
+    cli_loop._console = code.InteractiveConsole()
+    cli_loop.battery_warned = False
+
+    # MAIN LOOP
+    while True:
+        # Check for low battery
+        battery_state = robot.get_battery_state().result()
+        if not cli_loop.battery_warned and battery_state.battery_level == 1:
+            cli_loop.battery_warned = True
+            print("\n** Low battery. Type robot.behavior.drive_on_charger() to recharge.")
+        elif cli_loop.battery_warned and battery_state.battery_level == 2:
+            cli_loop.battery_warned = False
+
+        # If we're not supposed to be running, get out
+        if RUNNING == False:
+            return
+
+        # Main line reader
+        cli_loop._line = ''
+        while cli_loop._line == '':
+            readline.write_history_file(histfile)
+            try:
+                os_version = platform.system()
+                if os_version == 'Darwin':   # Tkinter breaks console on Macs
+                    print('VectorCLI>>> ', end='')
+                    cli_loop._line = sys.stdin.readline().strip()
+                else:
+                    cli_loop._line = cli_loop._console.raw_input('VectorCLI>>> ').strip()
+            except KeyboardInterrupt:
+                process_interrupt()
+                continue
+            except EOFError:
+                print("EOF.\nType 'exit' to exit.\n")
+                continue
+
+            try:
+                robot.kine.get_pose()
+            except: pass
+
+        # ! means repeat last command
+        if cli_loop._line[0] == '!':
+            do_shell_command(cli_loop._line[1:])
+            continue
+        # # tm means send a text message (not yet implemented in our system)
+        # elif cli_loop._line[0:3] == 'tm ' or cli_loop._line == 'tm':
+        #     text_message(cli_loop._line[3:])
+        #     continue
+        # show means show a type of visualization. not implemented by us
+        # elif cli_loop._line[0:5] == 'show ' or cli_loop._line == 'show':
+        #     show_args = cli_loop._line[5:].split(' ')
+        #     show_stuff(show_args)
+        #     continue
+        # Reload this cli program
+        elif cli_loop._line[0:7] == 'reload ':
+            do_reload(cli_loop._line[7:])
+            continue
+        # Start something
+        elif cli_loop._line[0:6] == 'start ' or cli_loop._line == 'start':
+            start_args = cli_loop._line[6:].split(' ')
+            start_stuff(start_args)
+            continue
+        cli_loop._do_await = False
+        if cli_loop._line[0:7] == 'import ' or cli_loop._line[0:5] == 'from '  or \
+               cli_loop._line[0:7] == 'global ' or cli_loop._line[0:4] == 'del '   or \
+               cli_loop._line[0:4] == 'for ' or \
+               cli_loop._line[0:4] == 'def '    or cli_loop._line[0:6] == 'async ' :
+            # Can't use assignment to capture a return value, so None.
+            ans = None
+        elif cli_loop._line[0:6] == 'await ':
+            cli_loop._do_await = True
+            cli_loop._line = 'ans=' + cli_loop._line[6:]
+        elif cli_loop._line[0:5] == 'exit':
+            # Clean up
+            try:
+                world_viewer.exited = True
+            except: pass
+            if running_fsm:
+                running_fsm.stop()
+            RUNNING=False
+        else:
+            cli_loop._line = 'ans=' + cli_loop._line
         try:
-            if future.result():
-                for source_node in self.sources:
-                    if source_node.succeeded:
-                        for dest_node in self.destinations:
-                            dest_node.start()
-        except:
-            pass
-
-class FailureTransition(Transition):
-    def __init__(self):
-        super().__init__()
-        self.transition_type = "Failure"
-
-    def __call__(self, robot, future):
-        try:
-            if future.result():
-                for source_node in self.sources:
-                    if source_node.succeeded:
-                        for dest_node in self.destinations:
-                            dest_node.start()
-        except:
-            for dest_node in self.destinations:
-                dest_node.start()
-            
-
-class DataTransition(Transition):
-    def __init__(self, target_data=None):
-        super().__init__()
-        self.transition_type = "Data"
-        self.target_data = target_data
-
-    def __call__(self, robot, future):
-        print("Calling data transition")
-        for source_node in self.sources:
-            if self.target_data is None or source_node.data == self.target_data:
-                print("Check Passed")
-                for dest_node in self.destinations:
-                    dest_node.data = future.result()
-                    print("firing up next node")
-                    dest_node.start()
-
-class TimeTransition(Transition):
-    def __init__(self, duration=0):
-        super().__init__()
-        self.transition_type = "Time"
-        self.duration = duration
-
-    def startNode(self, node):
-        node.start()
-
-    def __call__(self, robot, future):
-        print("Calling time transition")
-        for dest_node in self.destinations:
-            robot.conn.loop.call_later(self.duration, self.startNode, dest_node)
-
-
+            cli_globals['charger'] = robot.world.charger  # charger may have appeared
+            exec(cli_loop._line, cli_globals)
+            if cli_loop._do_await:
+                print("Can't use await outside of an async def.")
+                ans = None # ans = await ans
+            if not ans is None:
+                print(ans,end='\n\n')
+        except KeyboardInterrupt:
+            print('Keyboard interrupt!')
+            robot.disconnect()
+        except SystemExit:
+            print('Type exit() again to exit Python.')
+            robot.disconnect()
+            RUNNING = False
+        except Exception:
+            # robot.disconnect()
+            traceback.print_exc()
+            print()
 
 def main():
     args = anki_vector.util.parse_command_args()
-    with anki_vector.AsyncRobot(args.serial, show_viewer=True) as robot:
-        # print("Got robot")
-        # time.sleep(3)
-        # print("Starting program")
-        # forward = Forward(robot)
-        # turn = Turn(robot)
-        # backward = Forward(robot, -50)
-        # speak = Say(robot, "Hi There")
-        # takepic = TakePicture(robot)
-        # speak2 = Say(robot, "All done")
-        # declare_failure = Say(robot, "I have failed but I am still the best")
-        # displaypic = DisplayImageOnMonitor(robot)
-        # screenpic = DisplayImageOnScreen(robot)
-        # complete1 = CompletionTransition().add_sources(forward).add_destinations(turn)
-        # complete2 = CompletionTransition().add_sources(turn).add_destinations(backward, speak)
-        # complete3 = CompletionTransition().add_sources(speak).add_destinations(takepic)
-        # dataTrans = DataTransition().add_sources(takepic).add_destinations(displaypic, screenpic)
-        # timeTrans = TimeTransition(10).add_sources(displaypic).add_destinations(speak2)
-        # failureTrans = FailureTransition().add_sources(forward, turn, backward, speak, takepic, speak2).add_destinations(declare_failure)
-        # forward.start()
-
-        while(True):
-            try:
-            	cmd = input(">>> ")
-            	exec(cmd)
-            except Exception as e:
-                print("***COMMAND CAUSED ERROR***")
-                print(e)
-                print("**************************")
-                continue
+    # with anki_vector.AsyncRobot(args.serial, show_viewer=True, show_3d_viewer=True) as async_robot:
+    robot = anki_vector.AsyncRobot(args.serial, show_viewer=True, show_3d_viewer=True)
+    robot.connect()
+    NewFSM.robot = robot
+    # forward = Forward()
+    # turn = Turn()
+    # backward = Forward(-50)
+    # speak = Say("Hi There")
+    # takepic = TakePicture()
+    # speak2 = Say("All done")
+    # declare_failure = Say("I have failed but I am still the best")
+    # displaypic = DisplayImageOnMonitor()
+    # screenpic = DisplayImageOnScreen()
+    # complete1 = CompletionTrans().add_sources(forward).add_destinations(turn)
+    # complete2 = CompletionTrans().add_sources(turn).add_destinations(backward, speak)
+    # complete3 = CompletionTrans().add_sources(speak).add_destinations(takepic)
+    # dataTrans = DataTrans().add_sources(takepic).add_destinations(displaypic, screenpic)
+    # timeTrans = TimeTrans(10).add_sources(displaypic).add_destinations(speak2)
+    # failureTrans = FailureTrans().add_sources(forward, turn, backward, speak, takepic, speak2).add_destinations(declare_failure)
+    # forward.start()
+    setup()
+    cli_loop()
+    robot.disconnect()
 
 
 if __name__ == "__main__":
