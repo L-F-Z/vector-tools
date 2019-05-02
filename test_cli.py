@@ -35,10 +35,11 @@ class ActionNode(object):
         self.data = None
 
     def add_transition(self, transition):
+        trans_func = functools.partial(transition, self.robot)
         if self.action:
-            self.action.add_done_callback(transition)
+            self.action.add_done_callback(trans_func)
         else:
-            self.awaiting_actions.append(transition)
+            self.awaiting_actions.append(trans_func)
 
     def start(self, data=None):
         for act in self.awaiting_actions:
@@ -139,10 +140,7 @@ class Transition(object):
     def add_sources(self, *sources):
         self.sources.extend(sources)
         for source_node in self.sources:
-            if source_node.action:
-                source_node.action.add_done_callback(self)
-            else:
-                source_node.awaiting_actions.append(self)
+            source_node.add_transition(self)
         return self
 
     def add_destinations(self, *dests):
@@ -154,7 +152,7 @@ class CompletionTransition(Transition):
         super().__init__()
         self.transition_type = "Completion"
 
-    def __call__(self, future):
+    def __call__(self, robot, future):
         try:
             if future.result():
                 for dest_node in self.destinations:
@@ -171,7 +169,7 @@ class SuccessTransition(Transition):
         super().__init__()
         self.transition_type = "Success"
 
-    def __call__(self, future):
+    def __call__(self, robot, future):
         try:
             if future.result():
                 for source_node in self.sources:
@@ -186,7 +184,7 @@ class FailureTransition(Transition):
         super().__init__()
         self.transition_type = "Failure"
 
-    def __call__(self, future):
+    def __call__(self, robot, future):
         try:
             if future.result():
                 for source_node in self.sources:
@@ -204,7 +202,7 @@ class DataTransition(Transition):
         self.transition_type = "Data"
         self.target_data = target_data
 
-    def __call__(self, future):
+    def __call__(self, robot, future):
         print("Calling data transition")
         for source_node in self.sources:
             if self.target_data is None or source_node.data == self.target_data:
@@ -223,7 +221,7 @@ class TimeTransition(Transition):
     def startNode(self, node):
         node.start()
 
-    def __call__(self, future):
+    def __call__(self, robot, future):
         print("Calling time transition")
         for dest_node in self.destinations:
             self.robot.conn.loop.call_later(self.duration, self.startNode, dest_node)
