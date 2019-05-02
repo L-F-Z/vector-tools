@@ -106,6 +106,24 @@ class Turn(ActionNode):
         self.action = self.robot.behavior.turn_in_place(self.theta)
         super().start()
 
+class SetHeadAngle(ActionNode):
+    def __init__(self, robot, angle=0):
+        super().__init__(robot)
+        self.angle = degrees(angle)
+
+    def start(self):
+        self.action = self.robot.behavior.set_head_angle(self.angle)
+        super().start()
+
+class SetLiftHeight(ActionNode):
+    def __init__(self, robot, height=0):
+        super().__init__(robot)
+        self.height = height
+
+    def start(self):
+        self.action = self.robot.behavior.set_lift_height(self.height)
+        super().start()
+
 class Say(ActionNode):
     def __init__(self, robot, text):
         super().__init__(robot)
@@ -140,12 +158,27 @@ class DisplayImageOnMonitor(ActionNode):
         super().start()
 
 class DisplayImageOnScreen(ActionNode):
-    def __init__(self, robot):
+    def __init__(self, robot, duration=1):
         super().__init__(robot)
+        self.duration = duration
 
     def start(self):
         if self.data is None:
             print("No data to show")
+        else:
+            image_data = self.data.raw_image.resize((184,96))
+            screen_data = anki_vector.screen.convert_image_to_screen_data(image_data)
+            self.action = self.robot.screen.set_screen_with_image_data(screen_data, self.duration)
+            super().start()
+
+class MirrorMode(ActionNode):
+    def __init__(self, robot, enable=True):
+        super().__init__(robot)
+        self.enable = enable
+
+    def start(self):
+        self.action = self.robot.vision.enable_display_camera_feed_on_face(self.enable)
+        super().start()
 
 class Transition(object):
     def __init__(self):
@@ -250,31 +283,34 @@ class TimeTransition(Transition):
 def main():
     args = anki_vector.util.parse_command_args()
     with anki_vector.AsyncRobot(args.serial, show_viewer=True) as robot:
-        print("Got robot")
-        time.sleep(3)
-        print("Starting program")
-        forward = Forward(robot)
-        turn = Turn(robot)
-        backward = Forward(robot, -50)
-        speak = Say(robot, "Hi There")
-        takepic = TakePicture(robot)
-        speak2 = Say(robot, "All done")
-        declare_failure = Say(robot, "I have failed but I am still the best")
-        displaypic = DisplayImageOnMonitor(robot);
-        complete1 = CompletionTransition().add_sources(forward).add_destinations(turn)
-        complete2 = CompletionTransition().add_sources(turn).add_destinations(backward, speak)
-        complete3 = CompletionTransition().add_sources(speak).add_destinations(takepic)
-        dataTrans = DataTransition().add_sources(takepic).add_destinations(displaypic)
-        timeTrans = TimeTransition(10).add_sources(displaypic).add_destinations(speak2)
-        failureTrans = FailureTransition().add_sources(forward, turn, backward, speak, takepic, speak2).add_destinations(declare_failure)
-        forward.start()
+        # print("Got robot")
+        # time.sleep(3)
+        # print("Starting program")
+        # forward = Forward(robot)
+        # turn = Turn(robot)
+        # backward = Forward(robot, -50)
+        # speak = Say(robot, "Hi There")
+        # takepic = TakePicture(robot)
+        # speak2 = Say(robot, "All done")
+        # declare_failure = Say(robot, "I have failed but I am still the best")
+        # displaypic = DisplayImageOnMonitor(robot)
+        # screenpic = DisplayImageOnScreen(robot)
+        # complete1 = CompletionTransition().add_sources(forward).add_destinations(turn)
+        # complete2 = CompletionTransition().add_sources(turn).add_destinations(backward, speak)
+        # complete3 = CompletionTransition().add_sources(speak).add_destinations(takepic)
+        # dataTrans = DataTransition().add_sources(takepic).add_destinations(displaypic, screenpic)
+        # timeTrans = TimeTransition(10).add_sources(displaypic).add_destinations(speak2)
+        # failureTrans = FailureTransition().add_sources(forward, turn, backward, speak, takepic, speak2).add_destinations(declare_failure)
+        # forward.start()
 
         while(True):
             try:
             	cmd = input(">>> ")
             	exec(cmd)
-            except:
+            except Exception as e:
                 print("***COMMAND CAUSED ERROR***")
+                print(e)
+                print("**************************")
                 continue
 
 
