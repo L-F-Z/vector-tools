@@ -24,11 +24,6 @@ class StateMachineProgram(object):
         for child in self.children:
             child.stop()
 
-    # @classmethod
-    # def setRobot(cls, robot):
-    #     StateMachineProgram.robot = robot
-    #     print("Setting StateMachineProgram robot to {}: {}".format(robot, StateMachineProgram.robot))
-
 class ActionNode(StateMachineProgram):
     def __init__(self):
         super().__init__()     
@@ -65,20 +60,6 @@ class ActionNode(StateMachineProgram):
     def start(self, data=None):
         for act in self.awaiting_actions:
             self.action.add_done_callback(act)
-        # need some changes here, we should directly call those transitions.
-
-
-        # try:
-        #     if self.action.result():
-        #         print("    Got result")
-        #         self.post_success()
-        #     else:
-        #         print("result: {}".format(self.action))
-        # except:
-        #     print("Failed")
-        #     self.post_failure()
-
-        # self.post_completion()
 
     def stop(self):
         if self.action:
@@ -276,10 +257,6 @@ class CompletionTrans(Transition):
             if future.result():
                 for dest_node in self.destinations:
                     dest_node.start()
-                # for source_node in self.sources:
-                #     if source_node.completed:
-                #         for dest_node in self.destinations:
-                #             dest_node.start()
         except:
             pass
 

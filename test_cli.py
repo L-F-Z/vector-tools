@@ -23,12 +23,10 @@ import traceback
 from collections import namedtuple
 from importlib import __import__, reload
 import concurrent.futures
-import pdb
-from pdb import break_on_setattr
 from NewFSM import NewFSM
 from NewFSM.NewFSM import *
 
-# robot = None
+robot = None
 RUNNING = False
 histfile = None
 running_fsm = None
@@ -248,6 +246,7 @@ def cli_loop():
             print()
 
 def main():
+    global robot
     args = anki_vector.util.parse_command_args()
     # with anki_vector.AsyncRobot(args.serial, show_viewer=True, show_3d_viewer=True) as async_robot:
     robot = anki_vector.AsyncRobot(args.serial, show_viewer=True, show_3d_viewer=True)

@@ -3,8 +3,8 @@ from NewFSM.NewFSM import *
 class SimpleMotion(StateMachineProgram):
     $setup{
         Forward(50) =C=> Turn(30) =C=> {driver, speaker}
-        driver  : Forward(-50) =T(5)=> Say("All Done") =C=> photo
+        driver  : Forward(-50) =T(5)=> Say("All Done") =C=> SetHeadAngle(degrees(45)) =C=> photo
         speaker : Say("Save Anki!")
         photo   : TakePicture() =D=> DisplayImageOnScreen(5) =T(5)=> mirror
-        mirror  : MirrorMode()
+        mirror  : MirrorMode() =T(5)=>MirrorMode(enable=False)
     }
