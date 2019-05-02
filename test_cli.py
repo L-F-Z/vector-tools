@@ -139,6 +139,14 @@ class DisplayImageOnMonitor(ActionNode):
             # Image.open(io.BytesIO(image_data))
         super().start()
 
+class DisplayImageOnScreen(ActionNode):
+    def __init__(self, robot):
+        super().__init__(robot)
+
+    def start(self):
+        if self.data is None:
+            print("No data to show")
+
 class Transition(object):
     def __init__(self):
         self.sources = []
@@ -241,7 +249,7 @@ class TimeTransition(Transition):
 
 def main():
     args = anki_vector.util.parse_command_args()
-    with anki_vector.AsyncRobot(args.serial) as robot:
+    with anki_vector.AsyncRobot(args.serial, show_viewer=True) as robot:
         print("Got robot")
         time.sleep(3)
         print("Starting program")
@@ -262,8 +270,12 @@ def main():
         forward.start()
 
         while(True):
-        	cmd = input(">>> ")
-        	exec(cmd)
+            try:
+            	cmd = input(">>> ")
+            	exec(cmd)
+            except:
+                print("***COMMAND CAUSED ERROR***")
+                continue
 
 
 if __name__ == "__main__":
