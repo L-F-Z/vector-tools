@@ -290,6 +290,15 @@ class FailureTrans(Transition):
         except:
             for dest_node in self.destinations:
                 dest_node.start()
+                
+class NullTrans(Transition):
+    def __init__(self):
+        super().__init__()
+        self.transition_type = "Null"
+
+    def __call__(self, future):
+            for dest_node in self.destinations:
+                dest_node.start()
             
 
 class DataTrans(Transition):
